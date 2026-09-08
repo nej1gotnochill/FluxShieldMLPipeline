@@ -15,16 +15,17 @@ result (never used for any selection).
 
 ## reports/figures/ppt/ (SIH presentation figures)
 
-Not yet generated. Expected set (per project convention):
+All six generated from measured repository artifacts by `src/research_ppt_figures.py`
+(no invented values; 200 dpi PNG, white background).
 
-| File | Purpose | Source artifact | Status | Key takeaway |
-|---|---|---|---|---|
-| `ppt_01_solution_architecture.png` | Pipeline architecture diagram | — (diagram, not measured data) | — | PCAP → flows → 66 features → capture-disjoint evaluation → frozen artifact |
-| `ppt_02_model_comparison.png` | Baseline comparison on Tracks A-2/B | `experiments/baseline_results.csv` | dev | ExtraTrees uniquely combines precision and unseen-family recall (HGB collapses to 0.076) |
-| `ppt_03_early_detection.png` | Recall/F1 by causal window (1/3/5 s) | `reports/early_detection_results.json` | final | 3 s matches full-flow recall (0.9979); 1 s is precision-safe but pacing-blind |
-| `ppt_04_track_b_generalization.png` | Family-holdout recall by family | `experiments/baseline_family_recall.csv`, `reports/tuning_report.md` | dev | 0.974 aggregate on never-seen families; `class_weight=balanced` load-bearing |
-| `ppt_05_final_performance.png` | Final untouched-test metrics + confusion matrix | `experiments/final_test_results.csv` | final | P 0.999998 / R 0.997849 / FPR 0.00018 on 448,076 unseen flows |
-| `ppt_06_dataset_scale.png` | Dataset audit scale chart | `reports/dataset_inventory.json`, `reports/dataset_audit.md` | — | 45 pcaps · 37.84 GB · 98.7M packets · 1.24M flows |
+| File | Purpose | Source artifact | Dataset split / status | Key takeaway | SIH-PPT suitable |
+|---|---|---|---|---|---|
+| `ppt_01_solution_architecture.png` | End-to-end pipeline diagram (traffic → PCAP/flow processing → 66 features → ExtraTrees → sigmoid calibration → threshold 0.5 → verdict); emphasizes passive flow-based detection, no dashboard/frontend | structure per `README.md` + stage facts from `reports/*.md` (parser validation, calibration rationale, threshold validation) | n/a (diagram; stage facts cite their own reports) | clear passive-detection story: capture → features → calibrated probability → frozen decision rule | ✅ |
+| `ppt_02_model_comparison.png` | Grouped bars: Recall & F1 for the 4 baselines | `experiments/baseline_results.csv` (Track A-2 5-fold means) | **development** (A-2) — labeled as such on the figure | ExtraTrees 99.99% recall / 99.99% F1 in-distribution, selected for precision + generalization (LR collapses to 84.4% recall); annotation points to Track-B figure | ✅ |
+| `ppt_03_early_detection.png` | Recall & F1 vs causal window (1/3/5 s) with full-flow reference line | `reports/early_detection_results.json` + `experiments/final_test_results.csv` (reference only) | **final-test captures**, causal windows (frozen model) | recall 68.16% → 99.79% (3 s) → 99.79% (5 s); 3 s reaches essentially full-flow performance, 5 s adds nothing | ✅ |
+| `ppt_04_track_b_generalization.png` | Horizontal bars: holdout recall per family + aggregate | `experiments/baseline_family_recall.csv` (Track B, ExtraTrees); aggregate 0.9740 per `reports/tuning_report.md` | **development** family holdout — labeled; caption states "not zero-day guarantee" | tcp_syn_flood 100.00% / tcp_rst 99.18% / udp_flood 95.94% / aggregate 97.40% on families entirely excluded from training | ✅ |
+| `ppt_05_final_performance.png` | KPI board: final untouched-test metrics + inference benchmark | `experiments/final_test_results.csv` + `experiments/benchmark.csv` | **final untouched test** + benchmark (labeled on the figure) | P 99.9998% / R 99.7849% / F1 99.8922% / FPR 0.0180%; 481K flows/s, 49.8 ms median, 60.4 ms P95, 5.3 MB; 3 s recall 99.79% | ✅ |
+| `ppt_06_dataset_scale.png` | Infographic: dataset scale + captures by label + packets by class | `reports/dataset_audit.md` + `reports/dataset_inventory.json` (17/28 captures; packets-per-family table) | full dataset (audit) | 45 PCAPs · 98.7M packets · ~37.84 GB · 1,236,285 flows · 66 features · 11 attack families (17 benign / 28 attack captures) | ✅ |
 
 ## reports/figures/technical/
 
