@@ -1,0 +1,7 @@
+family,n_dups,pct_of_family
+tcp_syn_low,6103,38.106
+udp_flood,5459,1.388
+tcp_syn_fast,4996,31.215
+http_slow_read,92,0.422
+tcp_rst,52,0.04
+benign,7,0.051

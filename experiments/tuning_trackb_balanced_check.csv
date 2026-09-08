@@ -1,0 +1,5 @@
+config,params,agg_recall,tcp_rst,tcp_syn_flood,udp_flood
+4fc1eda5-ex-019,"{'n_estimators': 300, 'max_depth': 20, 'min_samples_leaf': 1, 'max_features': 'sqrt', 'class_weight': 'balanced', 'criterion': 'gini'}",0.9663879522116602,0.9938,1.0,0.9461
+4fc1eda5-ex-024,"{'n_estimators': 500, 'max_depth': 28, 'min_samples_leaf': 1, 'max_features': 'sqrt', 'class_weight': None, 'criterion': 'gini'}",0.6566639710706602,0.7407,0.9976,0.515
+baseline,"{'n_estimators': 100, 'class_weight': 'balanced'}",0.9739895329498467,0.9918,1.0,0.9594
+baseline_300,"{'n_estimators': 300, 'class_weight': 'balanced'}",0.9705747722729977,1.0,1.0,0.951
