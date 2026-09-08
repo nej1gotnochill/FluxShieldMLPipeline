@@ -1,0 +1,12 @@
+# FluxShield DDoS-AT-2022 pipeline
+# Python 3.12 — pinned to the versions measured in models/model_metadata.json
+scikit-learn>=1.5,<1.6
+numpy>=1.26
+pandas>=2.2
+pyarrow>=17          # parquet flow tables
+pyyaml>=6
+joblib>=1.4
+dpkt>=1.9.8          # pcap parsing (flow extraction)
+pytest>=8            # tests/
+# optional (not required for training/inference):
+# xgboost, lightgbm  # only if re-enabling the optional candidates

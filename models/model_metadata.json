@@ -1,0 +1,120 @@
+{
+  "dataset": {
+    "name": "DDoS-AT-2022",
+    "path": "E:\\archive",
+    "flow_table": "C:\\Users\\Divyansh Lalotra\\OneDrive\\Desktop\\FluxShield MLPipeline\\data\\processed\\flows",
+    "n_flows_total": 1236285,
+    "n_captures_total": 45
+  },
+  "splits": {
+    "track_a_train_captures": [
+      "tcp syn low_1st.pcap",
+      "tcp syn fast_1st.pcap",
+      "http low rate_1st.pcap",
+      "slow read_1st.pcap",
+      "slow header_1st.pcap",
+      "slowbody_1st.pcap",
+      "http flood get_1st.pcap",
+      "http flood post_1st.pcap",
+      "httperf_1st.pcap"
+    ],
+    "track_a_validation_captures": [
+      "UDP flood.pcap",
+      "tcp syn flood.pcap",
+      "TCP-RST.pcap",
+      "udp flood random port.pcap",
+      "udp flood same port.pcap",
+      "Constant Packet size and IDP_1-1.pcap",
+      "Constant Packet size and IDP_1-2.pcap",
+      "Constant Packet size and IDP_2-1.pcap",
+      "Constant Packet size and IDP_2-3.pcap",
+      "Constant Packet size and IDP_2-2.pcap",
+      "Constant Packet size and exponentially distributed IDP_1-1.pcap",
+      "Constant Packet size and exponentially distributed IDP_1-2.pcap",
+      "Constant Packet size and poisson distributed IDP_1-1.pcap",
+      "Constant Packet size and poisson distributed IDP_1-2.pcap",
+      "Constant Packet size and Uniformly distributed IDP_1-1.pcap",
+      "Constant Packet size and Uniformly distributed IDP_1-2.pcap",
+      "Constant Packet size and Uniformly distributed IDP_1-3.pcap",
+      "Constant Packet size and mix IDP_1-1.pcap",
+      "Constant Packet size and mix IDP_1-2.pcap"
+    ],
+    "track_a_final_test_captures": [
+      "Constant Packet size and mix IDP_1-3.pcap",
+      "httperf_2nd.pcap",
+      "slowbody_2nd.pcap",
+      "slowbody_3rd.pcap",
+      "slow header_2nd.pcap",
+      "slow header_3rd.pcap",
+      "slow read_2nd.pcap",
+      "http low rate_2nd.pcap",
+      "http low rate_3rd.pcap",
+      "tcp syn low_2nd.pcap",
+      "tcp syn fast_2nd.pcap",
+      "tcp syn fast_3rd.pcap",
+      "http flood get_2nd.pcap",
+      "http flood post_2nd.pcap",
+      "http flood_random.pcap",
+      "flash traffic_with_r.pcap",
+      "flash traffic_without r.pcap"
+    ],
+    "track_b_holdout_families": [
+      "tcp_syn_flood",
+      "tcp_rst",
+      "udp_flood"
+    ],
+    "capture_disjoint": true,
+    "final_test_untouched_until_step12": true
+  },
+  "model": {
+    "name": "extra_trees",
+    "params": {
+      "n_estimators": 300,
+      "max_depth": 20,
+      "min_samples_leaf": 1,
+      "max_features": "sqrt",
+      "class_weight": "balanced",
+      "criterion": "gini"
+    },
+    "search_best_scores": {
+      "mean_pr_auc": 0.9999999993125488,
+      "mean_recall": 0.9999602700367765,
+      "mean_fpr": 0.0014921801070517,
+      "mean_fnr": 3.972996322375688e-05
+    },
+    "calibrator": "sigmoid",
+    "calibration_brier": 1.313452284425332e-05,
+    "calibration_ece": 2.8108184493279658e-05
+  },
+  "threshold": {
+    "t_f1": 0.7619576089542284,
+    "t_fpr": 0.507383966148682,
+    "t_youden": 0.7619576089542284,
+    "f1_at_t_f1": 0.999994202730514,
+    "fpr_at_t_fpr": 0.0008460236886632825,
+    "recall_at_t_fpr": 0.9999884055282441,
+    "recall_at_t_f1": 0.9999884055282441,
+    "j_at_t_youden": 0.999988405528244,
+    "fpr_target": 0.001,
+    "t_op": 0.5,
+    "fpr_at_t_op": 0.0008460236886632825,
+    "op_point_rationale": "t=0.5 default; calibration fold near-separable so data-fitted thresholds are degenerate; validated against held-out dev benign FPR and Track B unseen-family recall (reports/tuning_report.md)"
+  },
+  "random_seed": 42,
+  "trained_at": "2026-09-08 22:05:40",
+  "exported_at": "2026-09-08T16:43:28.874483+00:00",
+  "software_versions": {
+    "python": "3.12.10",
+    "sklearn": "1.5.0",
+    "numpy": "2.5.2",
+    "pandas": "2.2.2",
+    "dpkt": "1.9.8",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "artifacts": {
+    "calibrated_model": "models/calibrated_model.joblib",
+    "feature_schema": "models/feature_schema.json",
+    "thresholds": "models/threshold.json",
+    "feature_definitions": "reports/feature_dictionary.md"
+  }
+}

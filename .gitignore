@@ -1,0 +1,44 @@
+# --- dataset & data products: NEVER commit ---
+data/
+*.pcap
+*.pcapng
+*.cap
+*.zip
+*.7z
+*.tar
+*.tar.gz
+
+# processed flow tables are regenerable and large (105 MB parquet)
+data/processed/
+data/_pilot/
+
+# --- keep experiment + metrics CSVs, exclude bulky raw tabular dumps ---
+# (experiments/*.csv are small measured-result records and ARE part of the repo;
+#  anything large dumped here should go to data/ instead)
+experiments/**/*.log
+
+# --- python ---
+__pycache__/
+**/__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- secrets / env ---
+.env
+.env.*
+
+# --- logs / tooling / caches ---
+logs/
+*.log
+.freebuff/
+.cache/
+cache/

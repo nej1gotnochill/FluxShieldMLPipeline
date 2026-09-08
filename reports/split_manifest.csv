@@ -1,0 +1,46 @@
+capture,family,first_ts,date,n_flows,n_packets,track_a_role,track_a_fold,track_b_role
+tcp syn low_1st.pcap,tcp_syn_low,1647494576.766151,2022-03-17,16016,50017,train,3,train
+tcp syn fast_1st.pcap,tcp_syn_fast,1647499794.950705,2022-03-17,16005,48283,train,3,train
+http low rate_1st.pcap,http_low_rate,1648104664.846926,2022-03-24,4799,107689,train,3,train
+slow read_1st.pcap,http_slow_read,1648115357.637779,2022-03-24,21826,3806511,train,3,train
+slow header_1st.pcap,http_slow_header,1648276015.488249,2022-03-26,5328,108042,train,3,train
+slowbody_1st.pcap,http_slow_body,1648281837.679536,2022-03-26,5757,59467,train,3,train
+http flood get_1st.pcap,http_flood,1648285857.634139,2022-03-26,23965,482725,train,3,train
+http flood post_1st.pcap,http_flood,1648286760.841527,2022-03-26,25402,531243,train,3,train
+httperf_1st.pcap,benign,1648548955.489648,2022-03-29,7635,187584,train,3,train
+UDP flood.pcap,udp_flood,1648793274.994995,2022-04-01,131078,1784978,val,3,holdout
+tcp syn flood.pcap,tcp_syn_flood,1648793754.987034,2022-04-01,131077,2492529,val,3,holdout
+TCP-RST.pcap,tcp_rst,1648794213.083827,2022-04-01,131077,1920001,val,3,holdout
+udp flood random port.pcap,udp_flood,1648795998.771967,2022-04-01,131079,2108487,val,3,holdout
+udp flood same port.pcap,udp_flood,1648796234.945832,2022-04-01,131079,1783688,val,3,holdout
+Constant Packet size and IDP_1-1.pcap,benign,1651557669.472635,2022-05-03,244,1313464,val,3,train
+Constant Packet size and IDP_1-2.pcap,benign,1651557861.486523,2022-05-03,204,1297123,val,3,train
+Constant Packet size and IDP_2-1.pcap,benign,1651560661.794962,2022-05-03,387,2210914,val,3,train
+Constant Packet size and IDP_2-3.pcap,benign,1651561092.066233,2022-05-03,344,2172544,val,3,train
+Constant Packet size and IDP_2-2.pcap,benign,1651561462.22346,2022-05-03,351,2178390,val,3,train
+Constant Packet size and exponentially distributed IDP_1-1.pcap,benign,1651563159.238663,2022-05-03,938,2602740,val,3,train
+Constant Packet size and exponentially distributed IDP_1-2.pcap,benign,1651564264.624858,2022-05-03,889,2602004,val,3,train
+Constant Packet size and poisson distributed IDP_1-1.pcap,benign,1651566561.252162,2022-05-03,389,2303437,val,3,train
+Constant Packet size and poisson distributed IDP_1-2.pcap,benign,1651566988.082607,2022-05-03,348,2274780,val,3,train
+Constant Packet size and Uniformly distributed IDP_1-1.pcap,benign,1651567703.113866,2022-05-03,495,1951387,val,3,train
+Constant Packet size and Uniformly distributed IDP_1-2.pcap,benign,1651568258.940407,2022-05-03,497,1957305,val,3,train
+Constant Packet size and Uniformly distributed IDP_1-3.pcap,benign,1651568817.12608,2022-05-03,495,1958104,val,3,train
+Constant Packet size and mix IDP_1-1.pcap,benign,1651569758.956408,2022-05-03,236,2203656,val,3,train
+Constant Packet size and mix IDP_1-2.pcap,benign,1651570065.400433,2022-05-03,269,2197515,val,3,train
+Constant Packet size and mix IDP_1-3.pcap,benign,1651570390.816705,2022-05-03,238,2186132,final_test,-1,final_test
+httperf_2nd.pcap,benign,1651575665.416237,2022-05-03,5317,133439,final_test,-1,final_test
+slowbody_2nd.pcap,http_slow_body,1651640996.071985,2022-05-04,5330,50317,final_test,-1,final_test
+slowbody_3rd.pcap,http_slow_body,1651642194.1099,2022-05-04,5744,59425,final_test,-1,final_test
+slow header_2nd.pcap,http_slow_header,1651644354.035934,2022-05-04,5328,108170,final_test,-1,final_test
+slow header_3rd.pcap,http_slow_header,1651645499.951135,2022-05-04,5332,108065,final_test,-1,final_test
+slow read_2nd.pcap,http_slow_read,1651646758.589678,2022-05-04,21826,3798116,final_test,-1,final_test
+http low rate_2nd.pcap,http_low_rate,1651648983.876723,2022-05-04,4798,107565,final_test,-1,final_test
+http low rate_3rd.pcap,http_low_rate,1651650187.665706,2022-05-04,4799,108123,final_test,-1,final_test
+tcp syn low_2nd.pcap,tcp_syn_low,1651651619.713174,2022-05-04,16017,50109,final_test,-1,final_test
+tcp syn fast_2nd.pcap,tcp_syn_fast,1651656058.050095,2022-05-04,16005,48323,final_test,-1,final_test
+tcp syn fast_3rd.pcap,tcp_syn_fast,1651656613.613826,2022-05-04,16005,48315,final_test,-1,final_test
+http flood get_2nd.pcap,http_flood,1651657747.194201,2022-05-04,41354,775518,final_test,-1,final_test
+http flood post_2nd.pcap,http_flood,1651657976.010405,2022-05-04,39027,739447,final_test,-1,final_test
+http flood_random.pcap,http_flood,1651658214.75928,2022-05-04,36120,683057,final_test,-1,final_test
+flash traffic_with_r.pcap,flash_traffic,1651817106.073811,2022-05-06,111148,338938,final_test,-1,final_test
+flash traffic_without r.pcap,flash_traffic,1651818236.41369,2022-05-06,113688,346667,final_test,-1,final_test
