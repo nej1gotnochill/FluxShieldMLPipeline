@@ -4,10 +4,11 @@ Every number plotted here is read from a repository artifact (CSV/JSON) or is
 one of the audited constants from reports/*.md. No metric is invented or
 synthesized. Frozen ML artifacts are only READ (never modified).
 
-v2 (visual refinement): ppt_01 (left-to-right ML-system architecture with the
-66-feature group fan-out), ppt_05 (hierarchical KPI board with confusion
-matrix), ppt_06 (dataset scale with transformation flow, measured family
-diversity and feature-group representation). ppt_02/03/04 unchanged.
+v3 (flat engineering restyle): ppt_01 (DFD-style pipeline, solid colors,
+stage panels), ppt_05 (flat KPI evaluation sheet), ppt_06 (flat dataset
+infographic). A geometry audit runs before every save: it fails loudly on
+text overflowing its box, pairwise text overlap, text outside the canvas,
+or an arrow/connector crossing text. ppt_02/03/04 unchanged.
 
 Outputs: reports/figures/ppt/ppt_0[1-6]_*.png  (200 dpi, 16:9-friendly)
 """
@@ -18,7 +19,9 @@ from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
+import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
+import matplotlib.text as mtext
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 import numpy as np
 import pandas as pd
@@ -34,6 +37,7 @@ plt.rcParams.update({
     "axes.titleweight": "bold", "axes.titlesize": 13,
 })
 
+# legacy palette — used ONLY by ppt_02/03/04 (kept byte-identical)
 NAVY = "#1F3B5C"
 BLUE = "#2E6FA3"
 TEAL = "#3E8E7E"
@@ -43,8 +47,21 @@ GREY = "#8A8F98"
 LIGHT = "#F2F5F8"
 INK = "#22272E"
 
-# semantic stage colors (shared across the PPT figure set)
-C_INPUT, C_EXTRACT, C_INFER, C_DECIDE = BLUE, TEAL, AMBER, RED
+# v3 flat design system (SOLID colors only — no gradients anywhere)
+NAV_D = "#12355B"     # dark navy — titles, primary borders
+BLUE_D = "#1976D2"; BLUE_L = "#DCEEFF"
+GREEN_D = "#2EAD62"; GREEN_L = "#E3F5E8"
+YELL_D = "#F2C94C"; YELL_L = "#FFF4CC"
+RED_D = "#E74C3C"; RED_L = "#FDE4E1"
+PURP_D = "#7650C8"; PURP_L = "#EDE7FA"
+DGRAY = "#374151"     # supporting text
+LGRAY = "#F3F4F6"     # neutral fill
+BORDER = "#C9D2DB"    # light panel border
+INKD = "#1A202C"      # near-black metric text
+SUBTX = "#4B5563"     # sub-label gray
+
+# semantic stage colors shared by the three figures
+S_INPUT, S_EXTRACT, S_INFER, S_DECIDE = BLUE_D, GREEN_D, YELL_D, RED_D
 
 FAMILY_DISPLAY = {
     "benign": "benign",
@@ -59,6 +76,13 @@ FAMILY_DISPLAY = {
     "http_slow_body": "http slow body",
     "tcp_syn_fast": "tcp syn fast",
     "tcp_syn_low": "tcp syn low",
+}
+FAMILY_SHORT = {
+    "benign": "benign", "http_slow_read": "slow read", "udp_flood": "udp flood",
+    "http_flood": "http flood", "tcp_syn_flood": "syn flood", "tcp_rst": "tcp rst",
+    "flash_traffic": "flash", "http_low_rate": "low rate",
+    "http_slow_header": "slow hdr", "http_slow_body": "slow body",
+    "tcp_syn_fast": "syn fast", "tcp_syn_low": "syn low",
 }
 
 # audited constants (README.md / FINAL_ML_SUMMARY.md / reports/dataset_audit.md)
@@ -122,149 +146,248 @@ def threshold_t050_fpr() -> float:
     raise KeyError("t=0.5 entry missing from threshold_sensitivity_results.json")
 
 
-# --------------------------------------------------------------------------
-# shared drawing helpers (consistent visual language across the set)
-# --------------------------------------------------------------------------
-def _card(ax, x, y, w, h, title, sub="", color=NAVY, fill=LIGHT,
-          tfs=11.5, sfs=8.4, lw=1.4, dashed=False, rounding=0.10,
-          textcolor=None):
-    ls = (0, (4, 2)) if dashed else "-"
-    ax.add_patch(FancyBboxPatch((x, y), w, h,
-                                boxstyle=f"round,pad=0.02,rounding_size={rounding}",
-                                linewidth=lw, edgecolor=color, facecolor=fill,
-                                linestyle=ls))
-    cy_t = y + h * (0.68 if sub else 0.5)
-    ax.text(x + w / 2, cy_t, title, ha="center", va="center",
-            fontsize=tfs, fontweight="bold",
-            color=textcolor or color, linespacing=1.15)
-    if sub:
-        ax.text(x + w / 2, y + h * 0.28, sub, ha="center", va="center",
-                fontsize=sfs, color="#4A5058", linespacing=1.25)
+# ==========================================================================
+# v3 shared helpers — flat design system + geometry audit
+# ==========================================================================
+def fig_canvas() -> tuple[plt.Figure, plt.Axes]:
+    """Full-canvas axes in INCH coordinates: 1 data unit == 1 inch."""
+    fig, ax = plt.subplots(figsize=(13.333, 7.5))
+    fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    ax.set_xlim(0, 13.333)
+    ax.set_ylim(0, 7.5)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    return fig, ax
 
 
-def _arrow(ax, p0, p1, color=GREY, lw=2.0, scale=18):
-    ax.add_patch(FancyArrowPatch(p0, p1, arrowstyle="-|>",
-                                 mutation_scale=scale, linewidth=lw, color=color,
-                                 shrinkA=0, shrinkB=0))
+def _flat_card(ax, x, y, w, h, *, fill, edge, lw=1.5, r=0.07):
+    p = FancyBboxPatch((x, y), w, h,
+                       boxstyle=f"round,pad=0,rounding_size={r}",
+                       linewidth=lw, edgecolor=edge, facecolor=fill)
+    ax.add_patch(p)
+    return p
 
 
-def _chip(ax, x, y, text, color, fs=8.4, textcolor="white"):
-    ax.text(x, y, text, ha="center", va="center", fontsize=fs,
-            fontweight="bold", color=textcolor,
-            bbox=dict(boxstyle="round,pad=0.34", fc=color, ec="none"))
+def _txt(ax, x, y, s, *, fs, color=INKD, weight="normal", ha="center",
+         va="center", ls=1.25, style="normal"):
+    return ax.text(x, y, s, fontsize=fs, color=color, fontweight=weight,
+                   ha=ha, va=va, linespacing=ls, style=style)
 
 
-# --------------------------------------------------------------------------
-# PPT 01 — solution architecture (refined: left-to-right ML-system pipeline)
-# --------------------------------------------------------------------------
+def _arr(ax, p0, p1, color=NAV_D, lw=2.0, scale=18, reg=None):
+    a = FancyArrowPatch(p0, p1, arrowstyle="-|>", mutation_scale=scale,
+                        linewidth=lw, color=color, shrinkA=0, shrinkB=0)
+    ax.add_patch(a)
+    if reg is not None:
+        reg.append(a)
+    return a
+
+
+def _line(ax, xs, ys, color=SUBTX, lw=1.0, ls="-", reg=None):
+    ln = ax.plot(xs, ys, color=color, lw=lw, linestyle=ls, solid_capstyle="butt")[0]
+    if reg is not None:
+        reg.append(ln)
+    return ln
+
+
+def _stage_box(ax, x, y, w, h, title, subs=(), *, color, fill, tfs=9.5,
+               sfs=7.6, lw=1.5, r=0.07, pairs=None, tcolor=None, scolor=SUBTX):
+    """Flat card with an auto-centered title + evenly padded sub lines."""
+    p = _flat_card(ax, x, y, w, h, fill=fill, edge=color, lw=lw, r=r)
+    tc = tcolor or color
+    if not subs:
+        t = _txt(ax, x + w / 2, y + h / 2, title, fs=tfs, color=tc, weight="bold")
+        if pairs is not None:
+            pairs.append((t, p))
+        return p
+    n = len(subs)
+    t_h = tfs / 72 * 1.30 * (title.count("\n") + 1)
+    s_h = sfs / 72 * 1.42
+    pad = (h - t_h - n * s_h) / (n + 2)
+    assert pad > 0.015, f"box too small: {title!r} (pad {pad:.3f})"
+    cy = y + h - pad - t_h / 2
+    t = _txt(ax, x + w / 2, cy, title, fs=tfs, color=tc, weight="bold")
+    if pairs is not None:
+        pairs.append((t, p))
+    cy -= t_h / 2 + pad + s_h / 2
+    for s in subs:
+        st = _txt(ax, x + w / 2, cy, s, fs=sfs, color=scolor)
+        if pairs is not None:
+            pairs.append((st, p))
+        cy -= s_h + pad
+    return p
+
+
+def _audit(fig, pairs, arrows, lines, name):
+    """Fail loudly on: text outside canvas, text-text overlap, text escaping
+    its registered box, or an arrow/connector crossing text."""
+    fig.canvas.draw()
+    ren = fig.canvas.get_renderer()
+    W, H = fig.get_size_inches() * fig.dpi
+    items = []
+    for t in fig.findobj(mtext.Text):
+        s = t.get_text()
+        if not t.get_visible() or not s.strip():
+            continue
+        bb = t.get_window_extent(renderer=ren)
+        items.append((s, bb))
+        if bb.x0 < 0.5 or bb.y0 < 0.5 or bb.x1 > W - 0.5 or bb.y1 > H - 0.5:
+            raise AssertionError(f"{name}: text outside canvas: {s[:40]!r}")
+    for i, (s1, b1) in enumerate(items):
+        for s2, b2 in items[i + 1:]:
+            ox = min(b1.x1, b2.x1) - max(b1.x0, b2.x0)
+            oy = min(b1.y1, b2.y1) - max(b1.y0, b2.y0)
+            if ox > 1.0 and oy > 1.0:
+                raise AssertionError(
+                    f"{name}: text overlap {s1[:30]!r} x {s2[:30]!r}")
+    for t, p in pairs:
+        tb = t.get_window_extent(renderer=ren)
+        pb = p.get_window_extent(renderer=ren)
+        m = 2.0  # px of clear space required inside every border
+        if not (tb.x0 >= pb.x0 + m and tb.x1 <= pb.x1 - m
+                and tb.y0 >= pb.y0 + m and tb.y1 <= pb.y1 - m):
+            raise AssertionError(f"{name}: text not inside box: {t.get_text()[:40]!r}")
+    for artist in list(arrows) + list(lines):
+        ab = artist.get_window_extent(renderer=ren)
+        if ab is None:
+            continue
+        for s, bb in items:
+            ox = min(ab.x1, bb.x1) - max(ab.x0, bb.x0)
+            oy = min(ab.y1, bb.y1) - max(ab.y0, bb.y0)
+            if ox > 1.0 and oy > 1.0:
+                kind = "arrow" if isinstance(artist, FancyArrowPatch) else "line"
+                raise AssertionError(f"{name}: {kind} crosses text {s[:30]!r}")
+
+
+# ==========================================================================
+# PPT 01 — solution architecture (flat DFD-style pipeline)
+# ==========================================================================
 def ppt01_architecture(m: dict) -> None:
     groups = feature_groups()
-    n_online, n_terminal = availability_counts()
     bench, ed = m["bench"], m["ed"]
     fpr_t05 = threshold_t050_fpr()
+    pairs, arrows, lines = [], [], []
 
-    fig, ax = plt.subplots(figsize=(12.8, 7.2))
-    ax.set_xlim(0, 12.8)
-    ax.set_ylim(0, 7.2)
-    ax.axis("off")
+    fig, ax = fig_canvas()
 
-    ax.text(0.15, 6.93, "FluxShield — passive flow-based DDoS detection",
-            ha="left", fontsize=17, fontweight="bold", color=NAVY)
-    ax.text(0.15, 6.62, "ML system architecture — every stage measured on the DDoS-AT-2022 pipeline",
-            ha="left", fontsize=10, color=GREY)
+    _txt(ax, 0.35, 7.20, "FluxShield — Passive Flow-Based DDoS Detection",
+         fs=18, color=NAV_D, weight="bold", ha="left")
+    _txt(ax, 0.35, 6.88,
+         "ML system architecture · DDoS-AT-2022 · every parameter shown is measured on the frozen pipeline",
+         fs=10, color=DGRAY, ha="left")
 
-    # stage legend directly above the four columns
-    cols = {1: 1.55, 2: 4.90, 3: 8.35, 4: 11.50}
-    _chip(ax, cols[1], 6.28, "INPUT", C_INPUT)
-    _chip(ax, cols[2], 6.28, "FEATURE EXTRACTION", C_EXTRACT)
-    _chip(ax, cols[3], 6.28, "ML INFERENCE", C_INFER)
-    _chip(ax, cols[4], 6.28, "DECISION", C_DECIDE)
+    # ---- stage panels (DFD containers) -----------------------------------
+    panels = [
+        (0.35, 2.40, "INPUT", S_INPUT),
+        (3.30, 3.30, "FEATURE EXTRACTION", S_EXTRACT),
+        (7.15, 2.50, "ML INFERENCE", S_INFER),
+        (10.20, 2.78, "DECISION", S_DECIDE),
+    ]
+    for x, w, name, c in panels:
+        _flat_card(ax, x, 1.85, w, 4.77, fill="white", edge=BORDER, lw=1.2)
+        chip = _flat_card(ax, x + 0.30, 6.08, w - 0.60, 0.34, fill=c, edge=c, lw=0, r=0.06)
+        t = _txt(ax, x + w / 2, 6.25, name, fs=9.5, color="white", weight="bold")
+        pairs.append((t, chip))
 
-    # ---- column 1: INPUT ------------------------------------------------
-    _card(ax, 0.30, 4.55, 2.50, 1.30, "Passive network traffic",
-          "one-way PCAP capture\n98.66M packets · 37.84 GB\nno inline blocking",
-          color=C_INPUT, fill="#EAF1F7", tfs=12)
-    _arrow(ax, (2.86, 5.20), (3.52, 5.20), lw=2.2, scale=20)
-    _card(ax, 0.30, 3.35, 2.50, 0.72,
-          "Payload inspection not required", "headers & timing metadata only",
-          color=GREY, fill="white", tfs=8.8, sfs=8.0, lw=1.0, dashed=True)
-    ax.plot([1.55, 1.55], [4.53, 4.09], color=GREY, lw=0.9, linestyle=":")
+    # inter-panel data-flow arrows
+    _arr(ax, (2.77, 5.60), (3.28, 5.60), reg=arrows)
+    _arr(ax, (6.62, 5.60), (7.13, 5.60), reg=arrows)
+    _arr(ax, (9.67, 5.60), (10.18, 5.60), reg=arrows)
 
-    # ---- column 2: FEATURE EXTRACTION -----------------------------------
-    _card(ax, 3.60, 4.75, 2.60, 0.95, "Flow construction",
-          "bidirectional 5-tuple flows\nmirror-duplicate removal",
-          color=C_EXTRACT, fill="#EAF4F1", tfs=11.5)
-    _arrow(ax, (4.90, 4.72), (4.90, 4.38), lw=1.8, scale=15)
-    _card(ax, 3.45, 3.15, 2.90, 1.20, "66-dimensional\nfeature vector",
-          "float32 · no IPs, ports or timestamps\nas predictive features",
-          color=C_EXTRACT, fill="#DDEDE8", tfs=13.5, lw=2.0)
-    # feature-group fan-out (exact ablation partition)
-    ax.plot([4.90, 4.90], [3.12, 2.89], color=C_EXTRACT, lw=1.2)
-    gy = 2.52
+    # ---- P1 · INPUT -------------------------------------------------------
+    _stage_box(ax, 0.51, 5.05, 2.08, 0.95, "PASSIVE NETWORK\nTRAFFIC",
+               ("one-way capture", "no inline blocking"),
+               color=S_INPUT, fill=BLUE_L, tfs=10, sfs=7.6, pairs=pairs)
+    _arr(ax, (1.55, 5.03), (1.55, 4.83), color=S_INPUT, reg=arrows)
+    _stage_box(ax, 0.51, 3.90, 2.08, 0.95, "PCAP / PACKET STREAM",
+               ("98,658,747 packets", "~37.84 GB raw traffic"),
+               color=S_INPUT, fill=BLUE_L, tfs=9.6, sfs=7.6, pairs=pairs)
+    _arr(ax, (1.55, 3.88), (1.55, 3.67), color=S_INPUT, reg=arrows)
+    _stage_box(ax, 0.51, 2.82, 2.08, 0.85, "PARSER VALIDATED",
+               ("byte-exact accounting", "45/45 captures"),
+               color=DGRAY, fill=LGRAY, tfs=8.6, sfs=7.2, pairs=pairs)
+
+    # ---- P2 · FEATURE EXTRACTION ------------------------------------------
+    _stage_box(ax, 3.45, 5.33, 2.70, 0.62, "FLOW CONSTRUCTION",
+               ("1,236,285 bidirectional flows",),
+               color=S_EXTRACT, fill=GREEN_L, tfs=9.5, sfs=7.6, pairs=pairs)
+    _arr(ax, (4.95, 5.31), (4.95, 5.11), color=S_EXTRACT, reg=arrows)
+    _stage_box(ax, 3.45, 4.49, 2.70, 0.60, "66-DIMENSIONAL FEATURE VECTOR",
+               ("float32 · no IPs / ports / timestamps",),
+               color=S_EXTRACT, fill=GREEN_L, tfs=9.3, sfs=7.4, lw=2.2, pairs=pairs)
+    # fan-out rail into the measured feature groups
+    _line(ax, [3.72, 3.72], [4.49, 2.59], color=S_EXTRACT, lw=1.2, reg=lines)
+    gy = 4.01
     for label, n in groups:
-        _card(ax, 3.75, gy, 2.30, 0.33, f"{label}  ·  {n}", "",
-              color=C_EXTRACT, fill="white", tfs=8.4, lw=1.0, rounding=0.06)
-        gy -= 0.40
-    _arrow(ax, (6.28, 5.20), (7.18, 5.20), lw=2.2, scale=20)
+        _line(ax, [3.72, 3.85], [gy + 0.16, gy + 0.16], color=S_EXTRACT,
+              lw=1.2, reg=lines)
+        _stage_box(ax, 3.85, gy, 2.40, 0.32, f"{label}  —  {n}",
+                   color=S_EXTRACT, fill="white", tfs=8.2, lw=1.0, r=0.05,
+                   pairs=pairs)
+        gy -= 0.395
 
-    # ---- column 3: ML INFERENCE -----------------------------------------
-    _card(ax, 7.25, 4.75, 2.20, 0.95, "ExtraTrees classifier",
-          "300 trees · max_depth 20\nclass_weight balanced",
-          color=C_INFER, fill="#FBF0E3", tfs=11.5)
-    _arrow(ax, (8.35, 4.72), (8.35, 4.38), lw=1.8, scale=15)
-    _card(ax, 7.25, 3.55, 2.20, 0.80, "Sigmoid calibration",
-          "isotonic rejected:\ndegenerate outputs",
-          color=C_INFER, fill="#FBF0E3", tfs=11, sfs=8.0)
-    _arrow(ax, (8.35, 3.52), (8.35, 3.18), lw=1.8, scale=15)
-    _card(ax, 7.25, 2.35, 2.20, 0.80, "Threat probability",
-          "calibrated p(DDoS)\nper flow",
-          color=C_INFER, fill="#FBF0E3", tfs=11, sfs=8.2)
-    _card(ax, 7.05, 1.05, 2.60, 0.85,
-          "Near-real-time passive detection",
-          f"{bench['throughput_flows_s@full']/1000:,.0f}K flows/s · "
-          f"{bench['latency_median_ms']:.1f} ms median\n(measured benchmark, frozen model)",
-          color=GREY, fill="white", tfs=8.8, sfs=7.8, lw=1.0, dashed=True)
-    ax.plot([8.35, 8.35], [2.32, 1.93], color=GREY, lw=0.9, linestyle=":")
-    _arrow(ax, (9.51, 5.20), (10.32, 5.20), lw=2.2, scale=20)
+    # ---- P3 · ML INFERENCE -------------------------------------------------
+    _stage_box(ax, 7.33, 5.15, 2.14, 0.80, "EXTRATREES CLASSIFIER",
+               ("300 trees · max_depth 20", "class_weight balanced"),
+               color=S_INFER, fill=YELL_L, tfs=9.3, sfs=7.4, pairs=pairs)
+    _arr(ax, (8.40, 5.13), (8.40, 4.84), color=S_INFER, reg=arrows)
+    _stage_box(ax, 7.33, 4.20, 2.14, 0.62, "SIGMOID CALIBRATION",
+               ("isotonic rejected (degenerate)",),
+               color=S_INFER, fill=YELL_L, tfs=9.0, sfs=7.2, pairs=pairs)
+    _arr(ax, (8.40, 4.18), (8.40, 3.94), color=S_INFER, reg=arrows)
+    _stage_box(ax, 7.33, 3.30, 2.14, 0.62, "DDoS PROBABILITY SCORE",
+               ("calibrated p(DDoS) per flow",),
+               color=S_INFER, fill=YELL_L, tfs=9.0, sfs=7.2, pairs=pairs)
+    _stage_box(ax, 7.33, 2.35, 2.14, 0.70, "NEAR-REAL-TIME INFERENCE",
+               (f"{bench['throughput_flows_s@full']/1000:,.0f}K flows/s · "
+                f"{bench['latency_median_ms']:.1f} ms median",),
+               color=S_INFER, fill=YELL_L, tfs=8.2, sfs=7.0, pairs=pairs)
 
-    # ---- column 4: DECISION ----------------------------------------------
-    _card(ax, 10.40, 4.70, 2.20, 1.00, "Operating threshold",
-          f"t = 0.5 · validated on held-out\ndev benign: FPR {fpr_t05:.5f} ≤ 1e-3",
-          color=C_DECIDE, fill="#F9ECEC", tfs=12, sfs=8.0)
-    _arrow(ax, (10.925, 4.66), (10.925, 4.28), lw=1.8, scale=15)
-    _arrow(ax, (12.025, 4.66), (12.025, 4.28), lw=1.8, scale=15)
-    _card(ax, 10.40, 3.72, 1.05, 0.52, "LEGITIMATE", "",
-          color=TEAL, fill=TEAL, tfs=9.2, textcolor="white")
-    _card(ax, 11.50, 3.72, 1.05, 0.52, "DDoS ALERT", "",
-          color=RED, fill=RED, tfs=9.2, textcolor="white")
-    _card(ax, 10.30, 1.60, 2.40, 0.85,
-          "Operational observation window: 3 s",
-          f"{ed['3.0']['metrics']['recall']*100:.2f}% recall with causal early\n"
-          "detection (final-test captures)",
-          color=GREY, fill="white", tfs=8.6, sfs=7.8, lw=1.0, dashed=True)
-    ax.plot([12.02, 12.02], [3.69, 2.48], color=GREY, lw=0.9, linestyle=":")
+    # ---- P4 · DECISION ------------------------------------------------------
+    _stage_box(ax, 10.44, 5.07, 2.30, 0.85, "OPERATING THRESHOLD",
+               ("t = 0.5 (operating point)",
+                f"held-out dev FPR {fpr_t05:.5f} ≤ 1e-3"),
+               color=S_DECIDE, fill=RED_L, tfs=9.3, sfs=7.4, pairs=pairs)
+    _arr(ax, (11.20, 5.05), (10.99, 4.56), color=S_DECIDE, reg=arrows)
+    _arr(ax, (11.98, 5.05), (12.19, 4.56), color=S_DECIDE, reg=arrows)
+    leg = _flat_card(ax, 10.44, 3.90, 1.06, 0.62, fill=GREEN_D, edge=GREEN_D, lw=0)
+    t = _txt(ax, 10.97, 4.30, "LEGITIMATE", fs=7.8, color="white", weight="bold")
+    s = _txt(ax, 10.97, 4.09, "(benign)", fs=6.8, color="white")
+    pairs += [(t, leg), (s, leg)]
+    atk = _flat_card(ax, 11.68, 3.90, 1.06, 0.62, fill=RED_D, edge=RED_D, lw=0)
+    t = _txt(ax, 12.21, 4.31, "DDoS", fs=9.0, color="white", weight="bold")
+    s = _txt(ax, 12.21, 4.09, "(attack)", fs=6.8, color="white")
+    pairs += [(t, atk), (s, atk)]
+    _stage_box(ax, 10.44, 2.60, 2.30, 0.90, "3 s OBSERVATION WINDOW",
+               (f"{ed['3.0']['metrics']['recall']*100:.2f}% recall · causal evaluation",
+                "5 s adds no meaningful recall"),
+               color=DGRAY, fill=LGRAY, tfs=8.6, sfs=7.0, pairs=pairs)
 
-    # ---- scope banner (with schema facts folded in) -----------------------
-    ax.add_patch(FancyBboxPatch((0.30, 0.14), 12.20, 0.58,
-                                boxstyle="round,pad=0.02,rounding_size=0.10",
-                                linewidth=1.0, edgecolor=NAVY, facecolor=LIGHT))
-    ax.text(6.40, 0.57, "PASSIVE · FLOW-BASED — no payload decryption · no inline blocking "
-                        "· no dashboard/frontend component",
-            ha="center", va="center", fontsize=9.5, fontweight="bold", color=NAVY)
-    ax.text(6.40, 0.26,
-            f"feature groups overlap (documented in the ablation study) · Σ = 66 · "
-            f"availability: {n_online} online / {n_terminal} terminal "
-            "(terminal features recomputed causally for early windows)",
-            ha="center", va="center", fontsize=8.2, color=GREY, style="italic")
+    # ---- bottom information strip ------------------------------------------
+    strip = [
+        ("PASSIVE", "offline analysis of recorded traffic"),
+        ("FLOW-BASED", "bidirectional 5-tuple flow features"),
+        ("NO PAYLOAD INSPECTION REQUIRED", "headers & timing metadata only"),
+        ("3 s OBSERVATION WINDOW", "99.79% recall · causal detection"),
+    ]
+    for i, (ti, su) in enumerate(strip):
+        x = 0.35 + i * 3.22
+        _stage_box(ax, x, 0.85, 2.97, 0.80, ti, (su,),
+                   color=NAV_D, fill=LGRAY, tfs=8.8, sfs=7.4, lw=1.2, pairs=pairs)
+    _txt(ax, 6.6665, 0.42,
+         "All stage parameters measured on the DDoS-AT-2022 pipeline · predictive features exclude "
+         "IP addresses, ports and timestamps · frozen model artifacts",
+         fs=8, color=SUBTX, style="italic")
 
+    _audit(fig, pairs, arrows, lines, "ppt_01")
     fig.savefig(OUT / "ppt_01_solution_architecture.png", bbox_inches="tight",
                 facecolor="white")
     plt.close(fig)
 
 
-# --------------------------------------------------------------------------
+# ==========================================================================
 # PPT 02 — model comparison (dev Track A-2)
-# --------------------------------------------------------------------------
+# ==========================================================================
 def ppt02_model_comparison(m: dict) -> None:
     a2 = m["a2"]
     order = ["extra_trees", "random_forest", "hist_gradient_boost", "logistic_regression"]
@@ -297,9 +420,9 @@ def ppt02_model_comparison(m: dict) -> None:
     plt.close(fig)
 
 
-# --------------------------------------------------------------------------
+# ==========================================================================
 # PPT 03 — early detection
-# --------------------------------------------------------------------------
+# ==========================================================================
 def ppt03_early_detection(m: dict) -> None:
     ed = m["ed"]
     wins = [1.0, 3.0, 5.0]
@@ -339,9 +462,9 @@ def ppt03_early_detection(m: dict) -> None:
     plt.close(fig)
 
 
-# --------------------------------------------------------------------------
+# ==========================================================================
 # PPT 04 — Track B generalization
-# --------------------------------------------------------------------------
+# ==========================================================================
 def ppt04_track_b(m: dict) -> None:
     tb = m["tb"]
     fams = [("UDP Flood", tb["udp_flood"]), ("TCP RST", tb["tcp_rst"]),
@@ -371,244 +494,232 @@ def ppt04_track_b(m: dict) -> None:
     plt.close(fig)
 
 
-# --------------------------------------------------------------------------
-# PPT 05 — final performance (refined: hierarchical KPI board)
-# --------------------------------------------------------------------------
+# ==========================================================================
+# PPT 05 — final performance (flat evaluation sheet)
+# ==========================================================================
 def ppt05_final_performance(m: dict) -> None:
-    ft = m["ft"]
-    bench = m["bench"]
-    ed3 = m["ed"]["3.0"]
+    ft, bench, ed, ed3 = m["ft"], m["bench"], m["ed"], m["ed"]["3.0"]
+    pairs = []
 
-    fig, ax = plt.subplots(figsize=(12.8, 7.2))
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.axis("off")
+    fig, ax = fig_canvas()
 
-    ax.text(0.025, 0.965, "FluxShield — final model performance",
-            fontsize=17, fontweight="bold", color=NAVY, va="center")
-    ax.text(0.025, 0.925,
-            "Untouched final test (448,076 flows · 17 captures · scored once)  +  "
-            "frozen-model inference benchmark — distinct evaluation categories",
-            fontsize=10, color=GREY, va="center")
+    _txt(ax, 0.35, 7.20, "FINAL MODEL PERFORMANCE", fs=18, color=NAV_D,
+         weight="bold", ha="left")
+    _txt(ax, 0.35, 6.88,
+         "Untouched final test (448,076 flows · 17 captures · scored once)  +  "
+         "frozen-model inference benchmark — distinct evaluation categories",
+         fs=10, color=DGRAY, ha="left")
 
-    # ---- ZONE 1: detection quality (dominant) ----------------------------
-    _chip(ax, 0.135, 0.878, "DETECTION QUALITY — FINAL UNTOUCHED TEST", TEAL, fs=8.8)
-    # hero cards: F1 + Recall
-    for x0, val, lab in [(0.025, f"{ft['f1']*100:.4f}%", "F1 score"),
-                         (0.265, f"{ft['recall']*100:.4f}%", "Recall (attack detection)")]:
-        ax.add_patch(FancyBboxPatch((x0, 0.545), 0.225, 0.285,
-                                    boxstyle="round,pad=0.004,rounding_size=0.012",
-                                    linewidth=2.0, edgecolor=TEAL, facecolor="#EAF4F1"))
-        ax.text(x0 + 0.1125, 0.735, val, ha="center", va="center",
-                fontsize=25, fontweight="bold", color=TEAL)
-        ax.text(x0 + 0.1125, 0.595, lab, ha="center", va="center",
-                fontsize=11, fontweight="bold", color=INK)
-    # secondary cards: Precision / FPR / FNR
-    sec = [(0.025, f"{ft['precision']*100:.4f}%", "Precision"),
-           (0.152, f"{ft['fpr']*100:.4f}%", "FPR (1 FP / 5,555 benign)"),
-           (0.279, f"{ft['fnr']*100:.3f}%", "FNR (952 / 442,521 attacks)")]
-    for x0, val, lab in sec:
-        ax.add_patch(FancyBboxPatch((x0, 0.415), 0.117, 0.105,
-                                    boxstyle="round,pad=0.004,rounding_size=0.010",
-                                    linewidth=1.2, edgecolor=NAVY, facecolor=LIGHT))
-        ax.text(x0 + 0.0585, 0.475, val, ha="center", va="center",
-                fontsize=11.5, fontweight="bold", color=NAVY)
-        ax.text(x0 + 0.0585, 0.438, lab, ha="center", va="center",
-                fontsize=6.8, color="#4A5058")
-    ax.text(0.025, 0.375, "PR-AUC 1.0000   ·   ROC-AUC 1.0000   ·   "
-            "per-family recall ≥ 0.997 on all 8 families",
-            fontsize=9.5, color=INK, fontweight="bold")
+    def header(x, y, s):
+        _txt(ax, x, y, s, fs=12, color=NAV_D, weight="bold", ha="left")
+        _line(ax, [x, x + 12.63], [y - 0.13, y - 0.13], color=BORDER, lw=1.0)
 
-    # ---- ZONE 3: validation evidence (confusion matrix) -------------------
-    _chip(ax, 0.745, 0.878, "VALIDATION EVIDENCE — CONFUSION MATRIX", NAVY, fs=8.8)
-    mx, my, cw, ch = 0.615, 0.470, 0.155, 0.155
+    # ---- section 1: final test performance ---------------------------------
+    header(0.35, 6.52, "1 · FINAL TEST PERFORMANCE")
+
+    hero = [(0.35, f"{ft['f1']*100:.4f}%", "F1 SCORE"),
+            (3.60, f"{ft['recall']*100:.4f}%", "RECALL (ATTACK DETECTION)")]
+    for x0, val, lab in hero:
+        p = _flat_card(ax, x0, 5.02, 3.05, 1.26, fill=GREEN_L, edge=GREEN_D, lw=2.0)
+        t = _txt(ax, x0 + 1.525, 5.80, val, fs=30, color=GREEN_D, weight="bold")
+        s = _txt(ax, x0 + 1.525, 5.30, lab, fs=10.5, color=INKD, weight="bold")
+        pairs += [(t, p), (s, p)]
+
+    sec = [(6.90, f"{ft['precision']*100:.4f}%", "PRECISION",
+            "441,569 TP / 441,570 alerts"),
+           (8.98, f"{ft['fpr']*100:.4f}%", "FALSE POSITIVE RATE",
+            "1 FP / 5,555 benign"),
+           (11.06, f"{ft['fnr']*100:.3f}%", "FALSE NEGATIVE RATE",
+            "952 FN / 442,521 attacks")]
+    for x0, val, lab, note in sec:
+        p = _flat_card(ax, x0, 5.52, 1.92, 0.76, fill=LGRAY, edge=NAV_D, lw=1.2)
+        t = _txt(ax, x0 + 0.96, 6.04, val, fs=14.5, color=NAV_D, weight="bold")
+        s1 = _txt(ax, x0 + 0.96, 5.80, lab, fs=7.6, color=INKD, weight="bold")
+        s2 = _txt(ax, x0 + 0.96, 5.64, note, fs=6.8, color=SUBTX)
+        pairs += [(t, p), (s1, p), (s2, p)]
+
+    pauc = _flat_card(ax, 6.90, 5.02, 6.08, 0.34, fill=LGRAY, edge=NAV_D, lw=1.2)
+    t = _txt(ax, 9.94, 5.19,
+             f"PR-AUC {ft['pr_auc']:.4f}   ·   ROC-AUC {ft['roc_auc']:.4f}   ·   "
+             "per-family recall ≥ 0.997 (8/8 families)",
+             fs=9, color=NAV_D, weight="bold")
+    pairs.append((t, pauc))
+
+    # ---- section 2: inference benchmark ------------------------------------
+    header(0.35, 4.62, "2 · INFERENCE BENCHMARK  (frozen calibrated model)")
+    bitems = [(0.35, "481K", "flows/s full-batch throughput"),
+              (3.57, f"{bench['latency_median_ms']:.1f} ms", "median single-flow latency"),
+              (6.79, f"{bench['latency_p95_ms']:.1f} ms", "P95 single-flow latency"),
+              (10.01, f"{bench['model_size_mb']:.1f} MB", "serialized model size")]
+    for x0, val, lab in bitems:
+        p = _flat_card(ax, x0, 3.42, 2.97, 0.96, fill=YELL_L, edge=YELL_D, lw=1.8)
+        t = _txt(ax, x0 + 1.485, 4.08, val, fs=21, color=NAV_D, weight="bold")
+        s = _txt(ax, x0 + 1.485, 3.68, lab, fs=8.6, color=DGRAY)
+        pairs += [(t, p), (s, p)]
+
+    # ---- section 3: early detection / section 4: confusion matrix ----------
+    header(0.35, 3.02, "3 · EARLY DETECTION — FINAL-TEST CAPTURES")
+    p = _flat_card(ax, 0.35, 1.30, 6.30, 1.48, fill=BLUE_L, edge=BLUE_D, lw=2.0)
+    t = _txt(ax, 3.50, 2.36, f"{ed3['metrics']['recall']*100:.2f}%", fs=26,
+             color=BLUE_D, weight="bold")
+    s1 = _txt(ax, 3.50, 1.96, "RECALL @ 3 s CAUSAL WINDOW", fs=10, color=INKD,
+              weight="bold")
+    s2 = _txt(ax, 3.50, 1.60,
+              f"coverage {ed3['detection_coverage_pct']:.2f}%  ·  1 s window: "
+              f"{ed['1.0']['metrics']['recall']*100:.2f}%  ·  5 s adds no meaningful additional recall",
+              fs=8.4, color=DGRAY)
+    pairs += [(t, p), (s1, p), (s2, p)]
+
+    header(6.90, 3.02, "4 · CONFUSION MATRIX — FINAL TEST")
+    cw, ch = 2.10, 0.62
+    cx = [8.55, 10.75]
+    ry = [2.02, 1.30]
     cells = [
-        (mx, my + ch, f"{int(ft['tn']):,}", "#EAF4F1", TEAL),      # TN
-        (mx + cw, my + ch, f"{int(ft['fp']):,}", "#F9E3E3", RED),  # FP
-        (mx, my, f"{int(ft['fn']):,}", "#FBF0E3", AMBER),          # FN
-        (mx + cw, my, f"{int(ft['tp']):,}", "#DDEDE8", TEAL),      # TP
+        (0, 0, f"{int(ft['tn']):,}", GREEN_L, "true negatives"),
+        (1, 0, f"{int(ft['fp']):,}", RED_L, "false positive"),
+        (0, 1, f"{int(ft['fn']):,}", RED_L, "false negatives"),
+        (1, 1, f"{int(ft['tp']):,}", GREEN_L, "true positives"),
     ]
-    for x0, y0, txt, fc, ec in cells:
-        ax.add_patch(FancyBboxPatch((x0, y0), cw, ch,
-                                    boxstyle="round,pad=0.002,rounding_size=0.008",
-                                    linewidth=1.1, edgecolor=ec, facecolor=fc))
-        ax.text(x0 + cw / 2, y0 + ch / 2, txt, ha="center", va="center",
-                fontsize=14, fontweight="bold", color=INK)
-    ax.text(mx + cw / 2, my + 2 * ch + 0.022, "pred benign", ha="center",
-            fontsize=8.5, color=GREY)
-    ax.text(mx + 1.5 * cw, my + 2 * ch + 0.022, "pred DDoS", ha="center",
-            fontsize=8.5, color=GREY)
-    ax.text(mx - 0.012, my + 1.5 * ch, "actual\nbenign", ha="right", va="center",
-            fontsize=8.5, color=GREY)
-    ax.text(mx - 0.012, my + 0.5 * ch, "actual\nDDoS", ha="right", va="center",
-            fontsize=8.5, color=GREY)
-    ax.add_patch(FancyBboxPatch((0.615, 0.245), 0.355, 0.130,
-                                boxstyle="round,pad=0.004,rounding_size=0.010",
-                                linewidth=1.2, edgecolor=TEAL, facecolor="white",
-                                linestyle=(0, (4, 2))))
-    ax.text(0.7925, 0.335, f"{ed3['metrics']['recall']*100:.2f}% recall @ 3 s causal window",
-            ha="center", fontsize=11, fontweight="bold", color=TEAL)
-    ax.text(0.7925, 0.285,
-            f"detection coverage {ed3['detection_coverage_pct']:.2f}% · "
-            "frozen model, structural causality",
-            ha="center", fontsize=7.8, color=GREY)
+    for cxi, ryi, val, fc, cap in cells:
+        p = _flat_card(ax, cx[cxi], ry[ryi], cw, ch, fill=fc,
+                       edge=NAV_D if fc == GREEN_L else RED_D, lw=1.2)
+        t = _txt(ax, cx[cxi] + cw / 2, ry[ryi] + 0.38, val, fs=15, color=INKD,
+                 weight="bold")
+        s = _txt(ax, cx[cxi] + cw / 2, ry[ryi] + 0.15, cap, fs=6.8, color=SUBTX)
+        pairs += [(t, p), (s, p)]
+    _txt(ax, cx[0] + cw / 2, 2.74, "PREDICTED BENIGN", fs=8.4, color=SUBTX,
+         weight="bold")
+    _txt(ax, cx[1] + cw / 2, 2.74, "PREDICTED DDOS", fs=8.4, color=SUBTX,
+         weight="bold")
+    _txt(ax, 8.45, ry[0] + ch / 2, "ACTUAL BENIGN", fs=8.4, color=SUBTX,
+         weight="bold", ha="right")
+    _txt(ax, 8.45, ry[1] + ch / 2, "ACTUAL DDOS", fs=8.4, color=SUBTX,
+         weight="bold", ha="right")
 
-    # ---- ZONE 2: operational performance (benchmark) ----------------------
-    _chip(ax, 0.545, 0.178, "OPERATIONAL PERFORMANCE — INFERENCE BENCHMARK (frozen calibrated model)",
-          AMBER, fs=8.8)
-    bench_items = [
-        (0.025, f"{bench['throughput_flows_s@full']/1000:,.0f}K", "flows/s · full-batch throughput"),
-        (0.265, f"{bench['latency_median_ms']:.1f} ms", "median single-flow latency"),
-        (0.505, f"{bench['latency_p95_ms']:.1f} ms", "P95 single-flow latency"),
-        (0.745, f"{bench['model_size_mb']:.1f} MB", "serialized model size"),
-    ]
-    for x0, val, lab in bench_items:
-        ax.add_patch(FancyBboxPatch((x0, 0.045), 0.23, 0.100,
-                                    boxstyle="round,pad=0.004,rounding_size=0.012",
-                                    linewidth=1.6, edgecolor=AMBER, facecolor="#FBF0E3"))
-        ax.text(x0 + 0.115, 0.108, val, ha="center", va="center",
-                fontsize=16, fontweight="bold", color=AMBER)
-        ax.text(x0 + 0.115, 0.066, lab, ha="center", va="center",
-                fontsize=8.2, color="#4A5058")
+    # ---- footer --------------------------------------------------------------
+    _flat_card(ax, 0.35, 0.50, 12.63, 0.48, fill=LGRAY, edge=BORDER, lw=1.0)
+    _txt(ax, 6.6665, 0.83,
+         "Final test was untouched; frozen model artifacts remained byte-identical (SHA-256 verified).",
+         fs=8.2, color=DGRAY)
+    _txt(ax, 6.6665, 0.65,
+         "Detection metrics = untouched final test  ·  throughput / latency / size = inference benchmark measurements",
+         fs=8.2, color=SUBTX, style="italic")
 
-    ax.text(0.5, 0.012,
-            "Final test was untouched; frozen model artifacts verified byte-identical (SHA-256). "
-            "Detection metrics = final untouched test · latency/throughput = benchmark.",
-            ha="center", fontsize=7.8, color=GREY, style="italic")
-
+    _audit(fig, pairs, [], [], "ppt_05")
     fig.savefig(OUT / "ppt_05_final_performance.png", bbox_inches="tight",
                 facecolor="white")
     plt.close(fig)
 
 
-# --------------------------------------------------------------------------
-# PPT 06 — dataset scale (refined: transformation + diversity + features)
-# --------------------------------------------------------------------------
+# ==========================================================================
+# PPT 06 — dataset scale (flat infographic)
+# ==========================================================================
 def ppt06_dataset_scale() -> None:
     fam_stats = load_inventory_family_stats()
     total_packets = sum(s["packets"] for s in fam_stats.values())
     total_caps = sum(s["captures"] for s in fam_stats.values())
     assert total_caps == 45 and total_packets == 98_658_747
     groups = feature_groups()
-    n_online, n_terminal = availability_counts()
+    pairs = []
 
-    fig, ax = plt.subplots(figsize=(12.8, 7.2))
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.axis("off")
+    fig, ax = fig_canvas()
 
-    ax.text(0.025, 0.965, "DDoS-AT-2022 — dataset scale & feature representation",
-            fontsize=17, fontweight="bold", color=NAVY, va="center")
-    ax.text(0.025, 0.925,
-            "45 validated PCAP captures · parser verified byte-exact "
-            "(45/45 packet-accounting identity) · raw data not distributed with this repository",
-            fontsize=10, color=GREY, va="center")
+    _txt(ax, 0.35, 7.20, "DDoS-AT-2022 — DATASET SCALE", fs=18, color=NAV_D,
+         weight="bold", ha="left")
+    _txt(ax, 0.35, 6.88,
+         "Large-scale PCAP traffic converted into behavioral flow representations · "
+         "all counts measured from the audited inventory",
+         fs=10, color=DGRAY, ha="left")
 
-    # ---- headline metrics --------------------------------------------------
-    heads = [("45", "PCAP captures"), (f"{total_packets/1e6:.2f}M", "packets"),
-             (f"~{RAW_GB:.2f} GB", "raw traffic"), (f"{N_FLOWS_TOTAL/1e6:.3f}M", "extracted flows")]
-    for i, (v, lab) in enumerate(heads):
-        x0 = 0.025 + i * 0.242
-        ax.add_patch(FancyBboxPatch((x0, 0.775), 0.225, 0.115,
-                                    boxstyle="round,pad=0.004,rounding_size=0.012",
-                                    linewidth=1.6, edgecolor=NAVY, facecolor=LIGHT))
-        ax.text(x0 + 0.1125, 0.845, v, ha="center", va="center",
-                fontsize=19, fontweight="bold", color=NAVY)
-        ax.text(x0 + 0.1125, 0.800, lab, ha="center", va="center",
-                fontsize=9.5, color="#333A44")
+    def header(x, y, s):
+        _txt(ax, x, y, s, fs=12, color=NAV_D, weight="bold", ha="left")
+        _line(ax, [x, x + (5.40 if x < 6.6 else 6.08)], [y - 0.13, y - 0.13],
+              color=BORDER, lw=1.0)
 
-    # ---- transformation band: PCAPs → packets → flows → features ----------
-    steps = [("PCAPs", "45 captures", C_INPUT),
-             ("Packets", f"{total_packets/1e6:.2f}M", C_INPUT),
-             ("Bidirectional flows", f"{N_FLOWS_TOTAL/1e6:.3f}M", TEAL),
-             ("66-feature vectors", "float32", NAVY)]
-    bx, bw, bh, by = 0.025, 0.205, 0.085, 0.645
-    for i, (t, s, c) in enumerate(steps):
-        x0 = bx + i * (bw + 0.043)
-        ax.add_patch(FancyBboxPatch((x0, by), bw, bh,
-                                    boxstyle="round,pad=0.003,rounding_size=0.010",
-                                    linewidth=1.4, edgecolor=c, facecolor="white"))
-        ax.text(x0 + bw / 2, by + bh * 0.62, t, ha="center", va="center",
-                fontsize=10.5, fontweight="bold", color=c)
-        ax.text(x0 + bw / 2, by + bh * 0.24, s, ha="center", va="center",
-                fontsize=8.6, color="#4A5058")
+    # ---- section 1: dataset scale ------------------------------------------
+    header(0.35, 6.52, "1 · DATASET SCALE")
+    heads = [(0.35, "45", "PCAP CAPTURES"),
+             (3.57, "98,658,747", "PACKETS"),
+             (6.79, "~37.84 GB", "RAW TRAFFIC"),
+             (10.01, "1,236,285", "EXTRACTED FLOWS")]
+    for x0, val, lab in heads:
+        p = _flat_card(ax, x0, 5.42, 2.97, 0.86, fill=BLUE_L, edge=BLUE_D, lw=1.8)
+        t = _txt(ax, x0 + 1.485, 6.02, val, fs=20, color=BLUE_D, weight="bold")
+        s = _txt(ax, x0 + 1.485, 5.66, lab, fs=8.8, color=INKD, weight="bold")
+        pairs += [(t, p), (s, p)]
+
+    # ---- section 2: dataset composition -------------------------------------
+    header(0.35, 5.10, "2 · DATASET COMPOSITION")
+    comp = [(0.35, "17", "BENIGN CAPTURES", GREEN_D, GREEN_L),
+            (4.64, "28", "ATTACK CAPTURES", RED_D, RED_L),
+            (8.93, "11", "ATTACK FAMILIES", NAV_D, LGRAY)]
+    for x0, val, lab, c, lc in comp:
+        p = _flat_card(ax, x0, 4.34, 4.04, 0.54, fill=lc, edge=c, lw=1.5)
+        t = _txt(ax, x0 + 0.55, 4.61, val, fs=15, color=c, weight="bold")
+        s = _txt(ax, x0 + 2.20, 4.61, lab, fs=9.5, color=INKD, weight="bold")
+        pairs += [(t, p), (s, p)]
+
+    # ---- section 3: processing pipeline (left column) ------------------------
+    header(0.35, 4.10, "3 · PROCESSING PIPELINE")
+    steps = [(0.35, "PCAP\nCAPTURES", "45 files", S_INPUT),
+             (1.96, "PACKETS", "98,658,747", S_INPUT),
+             (3.57, "BIDIRECTIONAL\nFLOWS", "1,236,285", S_EXTRACT),
+             (5.18, "66-FEATURE\nVECTORS", "float32", NAV_D)]
+    for i, (x0, ti, su, c) in enumerate(steps):
+        p = _flat_card(ax, x0, 3.20, 1.23, 0.68, fill="white", edge=c, lw=1.5)
+        t = _txt(ax, x0 + 0.615, 3.66, ti, fs=8.0, color=c, weight="bold")
+        s = _txt(ax, x0 + 0.615, 3.35, su, fs=6.6, color=DGRAY)
+        pairs += [(t, p), (s, p)]
         if i < 3:
-            _arrow(ax, (x0 + bw + 0.004, by + bh / 2), (x0 + bw + 0.039, by + bh / 2),
-                   color=GREY, lw=1.8, scale=14)
-    ax.text(bx + 3 * (bw + 0.043) + bw, by + bh + 0.018,
-            "large-scale packet captures → validated flows → multidimensional behavioral representation",
-            ha="right", fontsize=8.4, color=GREY, style="italic")
+            _arr(ax, (x0 + 1.25, 3.54), (x0 + 1.59, 3.54), color=NAV_D, lw=1.8, scale=13)
+    # NOTE: last box ends at 6.41; column width 0.35..5.75 for chips below
 
-    # ---- diversity: measured packets per family ---------------------------
-    axd = fig.add_axes([0.055, 0.115, 0.40, 0.40])
+    # ---- section 4: feature representation (left column) ---------------------
+    header(0.35, 2.80, "4 · FEATURE REPRESENTATION")
+    p = _flat_card(ax, 0.35, 2.22, 5.40, 0.40, fill=BLUE_L, edge=BLUE_D, lw=1.5)
+    t = _txt(ax, 3.05, 2.42,
+             "66 PREDICTIVE FEATURES · float32 · no IPs / ports / timestamps",
+             fs=9.5, color=NAV_D, weight="bold")
+    pairs.append((t, p))
+    chips = [
+        ("Timing / IAT — 22", GREEN_D, GREEN_L), ("Directional / packet — 16", BLUE_D, BLUE_L),
+        ("TCP behavior — 16", YELL_D, YELL_L), ("Rate / statistical — 11", PURP_D, PURP_L),
+        ("Protocol indicator — 1", RED_D, RED_L), ("TOTAL FEATURES — 66", NAV_D, LGRAY),
+    ]
+    for i, (txt, c, lc) in enumerate(chips):
+        x0 = 0.35 + (i % 2) * 2.80
+        y0 = [1.66, 1.12, 0.58][i // 2]
+        p = _flat_card(ax, x0, y0, 2.60, 0.38, fill=lc, edge=c, lw=1.2)
+        t = _txt(ax, x0 + 1.30, y0 + 0.19, txt, fs=8.4, color=c, weight="bold")
+        pairs.append((t, p))
+    _txt(ax, 3.05, 0.26,
+         "class imbalance is real and labelled: 19,276 benign (1.6%) vs "
+         "1,217,009 attack (98.4%) flows",
+         fs=7.4, color=SUBTX, style="italic")
+    _txt(ax, 3.05, 0.08,
+         "benign packets dominate raw volume (56.90M of 98.66M packets)",
+         fs=7.4, color=SUBTX, style="italic")
+
+    # ---- section 5: attack family diversity (right column) --------------------
+    header(6.90, 4.10, "5 · ATTACK FAMILY DIVERSITY — PACKET DISTRIBUTION")
+    axd = fig.add_axes([7.60 / 13.333, 0.62 / 7.5, 5.38 / 13.333, 3.20 / 7.5])
     fams_sorted = sorted(fam_stats.items(), key=lambda kv: kv[1]["packets"])
-    names = [FAMILY_DISPLAY.get(k, k) for k, _ in fams_sorted]
+    names = [FAMILY_SHORT.get(k, k) for k, _ in fams_sorted]
     vals = [s["packets"] / 1e6 for _, s in fams_sorted]
     caps = [s["captures"] for _, s in fams_sorted]
-    colors = [TEAL if k == "benign" else RED for k, _ in fams_sorted]
+    colors = [GREEN_D if k == "benign" else RED_D for k, _ in fams_sorted]
     bars = axd.barh(names, vals, color=colors, height=0.62)
     for b, v, c in zip(bars, vals, caps):
-        axd.text(v + 0.6, b.get_y() + b.get_height() / 2,
-                 f"{v:.2f}M · {c} cp", va="center", fontsize=7.4, color="#4A5058")
-    axd.set_xlim(0, 66)
-    axd.set_xlabel("packets (millions) — measured", fontsize=9)
-    axd.tick_params(axis="y", labelsize=8.2)
-    axd.set_title("Diversity — 11 attack families + benign\n"
-                  "(28 attack / 17 benign captures; cp = captures)",
-                  fontsize=10, color=NAVY, loc="left")
+        axd.text(v + 1.0, b.get_y() + b.get_height() / 2,
+                 f"{v:.2f}M · {c} cp", va="center", fontsize=7.2, color=DGRAY)
+    axd.set_xlim(0, 70)
+    axd.set_xlabel("packets (millions) — measured · 'cp' = capture count", fontsize=8)
+    axd.tick_params(axis="y", labelsize=7.6)
+    axd.set_title("measured packets per family — the dataset is NOT balanced",
+                  fontsize=9, color=NAV_D, loc="left")
     axd.grid(axis="y", visible=False)
 
-    # ---- feature representation (exact ablation partition) ----------------
-    axf = fig.add_axes([0.535, 0.115, 0.435, 0.40])
-    axf.axis("off")
-    axf.set_xlim(0, 1)
-    axf.set_ylim(0, 1)
-    axf.text(0.02, 0.96, "Feature representation — 66 float32 predictive features",
-             fontsize=10, fontweight="bold", color=NAVY, va="top")
-    # proportional stacked bar (spans 0.02–0.98 so every segment renders)
-    seg_colors = [TEAL, BLUE, AMBER, NAVY, RED]
-    SCALE = 0.96
-    x = 0.02
-    bar_y, bar_h = 0.60, 0.16
-    for (label, n), c in zip(groups, seg_colors):
-        w = n / 66 * SCALE
-        axf.add_patch(FancyBboxPatch((x, bar_y), w, bar_h,
-                                     boxstyle="round,pad=0.001,rounding_size=0.008",
-                                     linewidth=0.8, edgecolor="white", facecolor=c))
-        if w > 0.10:
-            axf.text(x + w / 2, bar_y + bar_h / 2, str(n), ha="center", va="center",
-                     fontsize=11, fontweight="bold", color="white")
-        x += w
-    # staggered labels below segments; the 1/66 protocol sliver gets a leader
-    x = 0.02
-    for i, ((label, n), c) in enumerate(zip(groups, seg_colors)):
-        w = n / 66 * SCALE
-        if w > 0.10:
-            axf.text(x + w / 2, 0.50 if i % 2 == 0 else 0.415,
-                     f"{label} ({n})", ha="center", va="top",
-                     fontsize=8.2, color=c, fontweight="bold")
-        else:
-            axf.annotate(f"{label} ({n})", xy=(x + w / 2, bar_y + bar_h + 0.005),
-                         xytext=(0.98, 0.845), fontsize=8.2, color=c,
-                         fontweight="bold", ha="right", va="center",
-                         arrowprops=dict(arrowstyle="-", color=c, lw=0.8))
-        x += w
-    facts = [
-        f"no IP addresses, ports or timestamps used as features",
-        f"availability: {n_online} online / {n_terminal} terminal "
-        f"(terminal features recomputed causally for early windows)",
-        "groups overlap across families (documented in the ablation study)",
-    ]
-    for i, t in enumerate(facts):
-        axf.text(0.02, 0.30 - i * 0.105, "•  " + t, fontsize=8.2, color="#4A5058",
-                 va="center")
-
-    ax.text(0.5, 0.022,
-            f"Class imbalance is real and labelled: {N_BENIGN_FLOWS:,} benign (1.6%) vs "
-            f"{N_ATTACK_FLOWS:,} attack (98.4%) flows · benign packets dominate volume "
-            "(56.90M of 98.66M)",
-            ha="center", fontsize=8.4, color=GREY, style="italic")
-
+    _audit(fig, pairs, [], [], "ppt_06")
     fig.savefig(OUT / "ppt_06_dataset_scale.png", bbox_inches="tight",
                 facecolor="white")
     plt.close(fig)
