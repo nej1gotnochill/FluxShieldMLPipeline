@@ -1,0 +1,40 @@
+name: fluxshield
+
+topology:
+  nodes:
+    router:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - apk add --no-cache tcpdump tcpreplay
+
+    client:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - apk add --no-cache curl iperf3
+
+    server:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - apk add --no-cache iperf3
+
+    attacker:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - apk add --no-cache hping3 tcpreplay
+
+    sensor:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - apk add --no-cache tcpdump
+        - ip link set eth1 promisc on
+
+  links:
+    - endpoints: ["client:eth1", "router:eth1"]
+    - endpoints: ["server:eth1", "router:eth2"]
+    - endpoints: ["attacker:eth1", "router:eth3"]
+    - endpoints: ["sensor:eth1", "router:eth4"]
