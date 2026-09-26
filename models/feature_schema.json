@@ -1,0 +1,417 @@
+{
+  "n_features": 66,
+  "features": [
+    {
+      "name": "protocol",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "flow_duration_s",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "TERMINAL"
+    },
+    {
+      "name": "fwd_packets",
+      "dtype": "float32",
+      "units": "count",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_packets",
+      "dtype": "float32",
+      "units": "count",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_bytes",
+      "dtype": "float32",
+      "units": "bytes",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_bytes",
+      "dtype": "float32",
+      "units": "bytes",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_len_max",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_len_min",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_len_mean",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_len_std",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_len_max",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_len_min",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_len_mean",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_len_std",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "pkt_len_max",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "pkt_len_min",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "pkt_len_mean",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "pkt_len_std",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "flow_iat_mean",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "flow_iat_std",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "flow_iat_max",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "flow_iat_min",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_iat_total",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_iat_mean",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_iat_std",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_iat_max",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_iat_min",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_iat_total",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_iat_mean",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_iat_std",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_iat_max",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_iat_min",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_psh",
+      "dtype": "float32",
+      "units": "count",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_psh",
+      "dtype": "float32",
+      "units": "count",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_urg",
+      "dtype": "float32",
+      "units": "count",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_urg",
+      "dtype": "float32",
+      "units": "count",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fin_count",
+      "dtype": "float32",
+      "units": "count",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "syn_count",
+      "dtype": "float32",
+      "units": "count",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "rst_count",
+      "dtype": "float32",
+      "units": "count",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "psh_count",
+      "dtype": "float32",
+      "units": "count",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "ack_count",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "urg_count",
+      "dtype": "float32",
+      "units": "count",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "ece_count",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "cwr_count",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_header_bytes",
+      "dtype": "float32",
+      "units": "bytes",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_header_bytes",
+      "dtype": "float32",
+      "units": "bytes",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "down_up_ratio",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "avg_pkt_size",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "avg_fwd_seg",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "avg_bwd_seg",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "init_fwd_win",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "TERMINAL"
+    },
+    {
+      "name": "init_bwd_win",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "TERMINAL"
+    },
+    {
+      "name": "fwd_data_pkts",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_data_pkts",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "active_mean",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "TERMINAL"
+    },
+    {
+      "name": "active_std",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "TERMINAL"
+    },
+    {
+      "name": "active_max",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "TERMINAL"
+    },
+    {
+      "name": "active_min",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "TERMINAL"
+    },
+    {
+      "name": "idle_mean",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "TERMINAL"
+    },
+    {
+      "name": "idle_std",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "TERMINAL"
+    },
+    {
+      "name": "idle_max",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "TERMINAL"
+    },
+    {
+      "name": "idle_min",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "TERMINAL"
+    },
+    {
+      "name": "flow_bytes_s",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "flow_packets_s",
+      "dtype": "float32",
+      "units": "seconds",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "fwd_win_mean",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    },
+    {
+      "name": "bwd_win_mean",
+      "dtype": "float32",
+      "units": "ratio_or_rate",
+      "availability": "ONLINE"
+    }
+  ],
+  "metadata_columns": [
+    "capture_file",
+    "flow_id",
+    "family",
+    "binary_label",
+    "src_ip",
+    "dst_ip",
+    "src_port",
+    "dst_port",
+    "start_ts",
+    "end_ts",
+    "n_packets",
+    "ended_by"
+  ],
+  "metadata_note": "metadata is joined for analysis ONLY; it is never fed to the model (leakage rule: no IPs, ports, timestamps, capture ids)",
+  "definitions": "reports/feature_dictionary.md"
+}

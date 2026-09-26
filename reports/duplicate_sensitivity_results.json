@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-09-09 00:04:35",
+  "seed": 42,
+  "scope": "development captures only (final test untouched)",
+  "original_dev_rows": 788209,
+  "duplicate_rows_removed": 16709,
+  "deduplicated_dev_rows": 771500,
+  "duplicate_pct": 2.12,
+  "S1_frozen_model": {
+    "full": {
+      "recall": 0.9999974176488209,
+      "precision": 0.9999987088227433,
+      "f1": 0.9999980632353653,
+      "fpr": 7.288098535092194e-05,
+      "fnr": 2.5823511791015483e-06,
+      "pr_auc_raw": 0.9999999999566557,
+      "roc_auc_raw": 0.9999999975533441
+    },
+    "dedup": {
+      "recall": 0.9999973607324495,
+      "precision": 0.9999986803644834,
+      "f1": 0.9999980205480311,
+      "fpr": 7.291818579553741e-05,
+      "fnr": 2.6392675504693936e-06,
+      "pr_auc_raw": 0.999999999954724,
+      "roc_auc_raw": 0.9999999974981422
+    },
+    "abs_diff": {
+      "recall": -0.0,
+      "precision": -0.0,
+      "f1": -0.0,
+      "fpr": 0.0,
+      "fnr": 0.0
+    }
+  },
+  "S2_frozen_config_retrain_A2": {
+    "full": {
+      "recall": 0.9996818031269245,
+      "precision": 0.994339978106963,
+      "f1": 0.9969701700545146,
+      "fpr": 0.17027790327908746,
+      "fnr": 0.0003181968730755191,
+      "pr_auc": 0.9999998106454063,
+      "roc_auc": 0.999994360532734
+    },
+    "dedup": {
+      "recall": 0.9989744016004822,
+      "precision": 0.9942934513038766,
+      "f1": 0.996591595762696,
+      "fpr": 0.17063545698148896,
+      "fnr": 0.0010255983995177017,
+      "pr_auc": 0.999992949854134,
+      "roc_auc": 0.9997966396395022
+    },
+    "abs_diff": {
+      "recall": -0.000707,
+      "precision": -4.7e-05,
+      "f1": -0.000379,
+      "fpr": 0.000358,
+      "fnr": 0.000707
+    }
+  },
+  "note": "S1 evaluates the untouched frozen artifact; S2 is a separate experimental retrain that does NOT replace the deployed model."
+}

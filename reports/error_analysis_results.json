@@ -1,0 +1,198 @@
+{
+  "generated_at": "2026-09-09 00:28:57",
+  "seed": 42,
+  "scope": "evaluation reads only: frozen model scored existing tables; no refit, no threshold change, official artifacts untouched",
+  "consistency_check_vs_official": {
+    "passed": true,
+    "official_source": "experiments/final_test_results.csv (unchanged)",
+    "rederived": {
+      "precision": 0.9999977353533981,
+      "recall": 0.997848689666705,
+      "f1": 0.9989220566661124,
+      "fpr": 0.00018001800180018,
+      "fnr": 0.002151310333294917
+    }
+  },
+  "final_test_errors": {
+    "n_fn": 952,
+    "n_fp": 1,
+    "fn_by_family": {
+      "flash_traffic": {
+        "n_fn": 680,
+        "fn_rate": 0.0030244266932341795,
+        "n_flows": 224836
+      },
+      "http_flood": {
+        "n_fn": 259,
+        "fn_rate": 0.0022231568827735383,
+        "n_flows": 116501
+      },
+      "http_low_rate": {
+        "n_fn": 2,
+        "fn_rate": 0.0002083984578514119,
+        "n_flows": 9597
+      },
+      "http_slow_body": {
+        "n_fn": 1,
+        "fn_rate": 9.030160736861116e-05,
+        "n_flows": 11074
+      },
+      "http_slow_header": {
+        "n_fn": 1,
+        "fn_rate": 9.380863039399625e-05,
+        "n_flows": 10660
+      },
+      "http_slow_read": {
+        "n_fn": 0,
+        "fn_rate": 0.0,
+        "n_flows": 21826
+      },
+      "tcp_syn_fast": {
+        "n_fn": 6,
+        "fn_rate": 0.00018744142455482662,
+        "n_flows": 32010
+      },
+      "tcp_syn_low": {
+        "n_fn": 3,
+        "fn_rate": 0.00018730099269526128,
+        "n_flows": 16017
+      }
+    },
+    "fp_profile": {
+      "n_fp": 1,
+      "by_capture": {
+        "Constant Packet size and mix IDP_1-3.pcap": 1
+      },
+      "feature_medians": {
+        "flow_duration_s": 320.6018981933594,
+        "n_packets_eff": 12.0,
+        "flow_packets_s": 0.03742959722876549,
+        "flow_bytes_s": 12.351766586303711,
+        "fwd_packets": 12.0,
+        "bwd_packets": 0.0,
+        "syn_count": 0.0,
+        "ack_count": 0.0,
+        "rst_count": 0.0,
+        "psh_count": 0.0,
+        "flow_iat_mean": 29.145627975463867,
+        "fwd_iat_mean": 29.145627975463867,
+        "bwd_iat_mean": 0.0,
+        "fwd_header_bytes": 336.0,
+        "bwd_header_bytes": 0.0,
+        "avg_pkt_size": 330.0
+      },
+      "proba_range": [
+        0.8286036160064395,
+        0.8286036160064395
+      ],
+      "benign_feature_medians_for_comparison": {
+        "flow_duration_s": 1.3697192668914795,
+        "flow_packets_s": 6551.3837890625,
+        "flow_bytes_s": 3587406.5
+      }
+    }
+  },
+  "early_1s_deep_dive": {
+    "captures": [
+      "slowbody_2nd.pcap",
+      "slowbody_3rd.pcap",
+      "slow header_2nd.pcap",
+      "slow header_3rd.pcap",
+      "http low rate_2nd.pcap",
+      "http low rate_3rd.pcap",
+      "flash traffic_with_r.pcap",
+      "flash traffic_without r.pcap"
+    ],
+    "metrics": {
+      "precision": 1.0,
+      "recall": 0.4729083649789441,
+      "f1": 0.6421422760888517,
+      "pr_auc": NaN,
+      "roc_auc": NaN,
+      "fpr": NaN,
+      "fnr": 0.5270916350210558,
+      "tn": 0.0,
+      "fp": 0.0,
+      "fn": 135053.0,
+      "tp": 121170.0,
+      "n_benign": 0.0,
+      "n_attack": 256223.0
+    },
+    "family_evidence": [
+      {
+        "family": "flash_traffic",
+        "n_1s_flows": 224885,
+        "recall_1s": 0.5002290059363674,
+        "n_fn_1s": 112391,
+        "n_packets_eff_fn_med": 1.0,
+        "n_packets_eff_det_med": 2.0,
+        "flow_duration_s_fn_med": 0.0,
+        "flow_duration_s_det_med": 0.9979851245880127,
+        "flow_packets_s_fn_med": 0.0,
+        "flow_packets_s_det_med": 2.0040881633758545,
+        "syn_count_fn_med": 1.0,
+        "syn_count_det_med": 2.0,
+        "ack_count_fn_med": 0.0,
+        "ack_count_det_med": 0.0,
+        "flow_iat_mean_fn_med": 0.0,
+        "flow_iat_mean_det_med": 0.997960090637207
+      },
+      {
+        "family": "http_low_rate",
+        "n_1s_flows": 9603,
+        "recall_1s": 0.5928355722170155,
+        "n_fn_1s": 3910,
+        "n_packets_eff_fn_med": 1.0,
+        "n_packets_eff_det_med": 2.0,
+        "flow_duration_s_fn_med": 0.0,
+        "flow_duration_s_det_med": 0.9970190525054932,
+        "flow_packets_s_fn_med": 0.0,
+        "flow_packets_s_det_med": 2.006114959716797,
+        "syn_count_fn_med": 1.0,
+        "syn_count_det_med": 2.0,
+        "ack_count_fn_med": 0.0,
+        "ack_count_det_med": 0.0,
+        "flow_iat_mean_fn_med": 0.0,
+        "flow_iat_mean_det_med": 0.996941089630127
+      },
+      {
+        "family": "http_slow_body",
+        "n_1s_flows": 11075,
+        "recall_1s": 0.15340857787810383,
+        "n_fn_1s": 9376,
+        "n_packets_eff_fn_med": 1.0,
+        "n_packets_eff_det_med": 7.0,
+        "flow_duration_s_fn_med": 0.0,
+        "flow_duration_s_det_med": 0.8160459995269775,
+        "flow_packets_s_fn_med": 0.0,
+        "flow_packets_s_det_med": 8.578789710998535,
+        "syn_count_fn_med": 1.0,
+        "syn_count_det_med": 2.0,
+        "ack_count_fn_med": 0.0,
+        "ack_count_det_med": 6.0,
+        "flow_iat_mean_fn_med": 0.0,
+        "flow_iat_mean_det_med": 0.13599169254302979
+      },
+      {
+        "family": "http_slow_header",
+        "n_1s_flows": 10660,
+        "recall_1s": 0.12045028142589118,
+        "n_fn_1s": 9376,
+        "n_packets_eff_fn_med": 1.0,
+        "n_packets_eff_det_med": 7.0,
+        "flow_duration_s_fn_med": 0.0,
+        "flow_duration_s_det_med": 0.8149200677871704,
+        "flow_packets_s_fn_med": 0.0,
+        "flow_packets_s_det_med": 8.5911865234375,
+        "syn_count_fn_med": 1.0,
+        "syn_count_det_med": 2.0,
+        "ack_count_fn_med": 0.0,
+        "ack_count_det_med": 6.0,
+        "flow_iat_mean_fn_med": 0.0,
+        "flow_iat_mean_det_med": 0.13577188551425934
+      }
+    ],
+    "method": "causal 1s re-extraction (early_detection.extract_window_rows) scored with the frozen pipeline; t_op=0.5"
+  },
+  "taxonomy_note": "see reports/error_analysis_report.md for the interpreted failure-mode table (evidence -> cause -> implication -> future mitigation, no mitigation claimed as implemented)"
+}

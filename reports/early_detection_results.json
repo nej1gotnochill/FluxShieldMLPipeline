@@ -1,0 +1,520 @@
+{
+  "generated_at": "2026-09-08 23:18:59",
+  "frozen_artifacts": {
+    "model": "extra_trees",
+    "params": {
+      "n_estimators": 300,
+      "max_depth": 20,
+      "min_samples_leaf": 1,
+      "max_features": "sqrt",
+      "class_weight": "balanced",
+      "criterion": "gini"
+    },
+    "calibrator": "sigmoid",
+    "t_op": 0.5,
+    "note": "artifacts loaded from models/ - not refitted, threshold not changed"
+  },
+  "windows_s": [
+    1.0,
+    3.0,
+    5.0
+  ],
+  "captures": [
+    "Constant Packet size and mix IDP_1-3.pcap",
+    "httperf_2nd.pcap",
+    "slowbody_2nd.pcap",
+    "slowbody_3rd.pcap",
+    "slow header_2nd.pcap",
+    "slow header_3rd.pcap",
+    "slow read_2nd.pcap",
+    "http low rate_2nd.pcap",
+    "http low rate_3rd.pcap",
+    "tcp syn low_2nd.pcap",
+    "tcp syn fast_2nd.pcap",
+    "tcp syn fast_3rd.pcap",
+    "http flood get_2nd.pcap",
+    "http flood post_2nd.pcap",
+    "http flood_random.pcap",
+    "flash traffic_with_r.pcap",
+    "flash traffic_without r.pcap"
+  ],
+  "causality": {
+    "rule": "window accumulators frozen at the FIRST packet with t > flow_start + W; boundary exclusive; frozen flows cannot be updated or re-created; capture-end flows contain only in-window packets by definition",
+    "terminal_features": "active_*/idle_* recomputed causally (closed periods only) per reports/feature_dictionary.md; flow_duration_s = in-window span"
+  },
+  "reference_full_flow_final_test": {
+    "source": "experiments/final_test_results.csv (unchanged, not recomputed)",
+    "n_flows": 448076,
+    "precision": 0.999997735353398,
+    "recall": 0.997848689666705,
+    "f1": 0.9989220566661124,
+    "fpr": 0.0001800180018001,
+    "fnr": 0.0021513103332949,
+    "pr_auc": 0.9999999348242234,
+    "roc_auc": 0.9999947966079328,
+    "threshold": 0.5
+  },
+  "results": {
+    "1.0": {
+      "n_flows_scored": 448512,
+      "n_unique_flows_matched": 329996,
+      "n_extra_window_instances": 118516,
+      "n_terminal_flows": 330302,
+      "detection_coverage_pct": 99.9058,
+      "n_uncovered_flows": 311,
+      "metrics": {
+        "precision": 0.9999470060048821,
+        "recall": 0.6815672853121183,
+        "f1": 0.8106159666415171,
+        "pr_auc": 0.9999504766099183,
+        "roc_auc": 0.9973597224269098,
+        "fpr": 0.00288028802880288,
+        "fnr": 0.31843271468788165,
+        "tn": 5539,
+        "fp": 16,
+        "fn": 141052,
+        "tp": 301905,
+        "n_benign": 5555,
+        "n_attack": 442957
+      },
+      "family_recall": [
+        {
+          "family": "benign",
+          "n_flows": 5555,
+          "recall": 0.00288028802880288,
+          "mean_proba": 0.0031631543846959145
+        },
+        {
+          "family": "flash_traffic",
+          "n_flows": 224885,
+          "recall": 0.5002290059363674,
+          "mean_proba": 0.5038599621212349
+        },
+        {
+          "family": "http_flood",
+          "n_flows": 116501,
+          "recall": 0.9487386374365885,
+          "mean_proba": 0.9488346160892704
+        },
+        {
+          "family": "http_low_rate",
+          "n_flows": 9603,
+          "recall": 0.5928355722170155,
+          "mean_proba": 0.5956568634380086
+        },
+        {
+          "family": "http_slow_body",
+          "n_flows": 11075,
+          "recall": 0.15340857787810383,
+          "mean_proba": 0.15975159613277862
+        },
+        {
+          "family": "http_slow_header",
+          "n_flows": 10660,
+          "recall": 0.12045028142589118,
+          "mean_proba": 0.12699851433750894
+        },
+        {
+          "family": "http_slow_read",
+          "n_flows": 22205,
+          "recall": 0.9987840576446746,
+          "mean_proba": 0.9862102152368808
+        },
+        {
+          "family": "tcp_syn_fast",
+          "n_flows": 32010,
+          "recall": 1.0,
+          "mean_proba": 0.9999912086605425
+        },
+        {
+          "family": "tcp_syn_low",
+          "n_flows": 16018,
+          "recall": 1.0,
+          "mean_proba": 0.9999853219407772
+        }
+      ],
+      "decision_latency_s": {
+        "median": 1.0,
+        "p95": 1.0,
+        "max": 1.0,
+        "definition": "time from flow start to the freeze event (first packet beyond the window boundary), capped at W; capture-end flows capped at W"
+      }
+    },
+    "3.0": {
+      "n_flows_scored": 448512,
+      "n_unique_flows_matched": 329979,
+      "n_extra_window_instances": 118533,
+      "n_terminal_flows": 330302,
+      "detection_coverage_pct": 99.9007,
+      "n_uncovered_flows": 328,
+      "metrics": {
+        "precision": 0.9999751149801033,
+        "recall": 0.9978891856320139,
+        "f1": 0.9989310613679251,
+        "pr_auc": 0.999978745963622,
+        "roc_auc": 0.9988928850420424,
+        "fpr": 0.0019801980198019802,
+        "fnr": 0.0021108143679860573,
+        "tn": 5544,
+        "fp": 11,
+        "fn": 935,
+        "tp": 442022,
+        "n_benign": 5555,
+        "n_attack": 442957
+      },
+      "family_recall": [
+        {
+          "family": "benign",
+          "n_flows": 5555,
+          "recall": 0.0019801980198019802,
+          "mean_proba": 0.002203524255104201
+        },
+        {
+          "family": "flash_traffic",
+          "n_flows": 224885,
+          "recall": 0.9969940191653511,
+          "mean_proba": 0.9968922565584057
+        },
+        {
+          "family": "http_flood",
+          "n_flows": 116501,
+          "recall": 0.9977768431172265,
+          "mean_proba": 0.9977606175966902
+        },
+        {
+          "family": "http_low_rate",
+          "n_flows": 9603,
+          "recall": 1.0,
+          "mean_proba": 0.9998232384722401
+        },
+        {
+          "family": "http_slow_body",
+          "n_flows": 11075,
+          "recall": 1.0,
+          "mean_proba": 0.9999841488894632
+        },
+        {
+          "family": "http_slow_header",
+          "n_flows": 10660,
+          "recall": 1.0,
+          "mean_proba": 0.9999844778528684
+        },
+        {
+          "family": "http_slow_read",
+          "n_flows": 22205,
+          "recall": 1.0,
+          "mean_proba": 0.999823845912216
+        },
+        {
+          "family": "tcp_syn_fast",
+          "n_flows": 32010,
+          "recall": 1.0,
+          "mean_proba": 0.9999914936877651
+        },
+        {
+          "family": "tcp_syn_low",
+          "n_flows": 16018,
+          "recall": 1.0,
+          "mean_proba": 0.9999855437521091
+        }
+      ],
+      "decision_latency_s": {
+        "median": 3.0,
+        "p95": 3.0,
+        "max": 3.0,
+        "definition": "time from flow start to the freeze event (first packet beyond the window boundary), capped at W; capture-end flows capped at W"
+      }
+    },
+    "5.0": {
+      "n_flows_scored": 448510,
+      "n_unique_flows_matched": 329979,
+      "n_extra_window_instances": 118531,
+      "n_terminal_flows": 330302,
+      "detection_coverage_pct": 99.9007,
+      "n_uncovered_flows": 328,
+      "metrics": {
+        "precision": 0.9999751148675093,
+        "recall": 0.9978891761014098,
+        "f1": 0.9989310565364876,
+        "pr_auc": 0.9999942729259313,
+        "roc_auc": 0.9995965020980884,
+        "fpr": 0.0019801980198019802,
+        "fnr": 0.00211082389859015,
+        "tn": 5544,
+        "fp": 11,
+        "fn": 935,
+        "tp": 442020,
+        "n_benign": 5555,
+        "n_attack": 442955
+      },
+      "family_recall": [
+        {
+          "family": "benign",
+          "n_flows": 5555,
+          "recall": 0.0019801980198019802,
+          "mean_proba": 0.0021741607108832967
+        },
+        {
+          "family": "flash_traffic",
+          "n_flows": 224883,
+          "recall": 0.99699399243162,
+          "mean_proba": 0.9969980096548583
+        },
+        {
+          "family": "http_flood",
+          "n_flows": 116501,
+          "recall": 0.9977768431172265,
+          "mean_proba": 0.9977620502197807
+        },
+        {
+          "family": "http_low_rate",
+          "n_flows": 9603,
+          "recall": 1.0,
+          "mean_proba": 0.9999064769534551
+        },
+        {
+          "family": "http_slow_body",
+          "n_flows": 11075,
+          "recall": 1.0,
+          "mean_proba": 0.9999853924097806
+        },
+        {
+          "family": "http_slow_header",
+          "n_flows": 10660,
+          "recall": 1.0,
+          "mean_proba": 0.9999858089931625
+        },
+        {
+          "family": "http_slow_read",
+          "n_flows": 22205,
+          "recall": 1.0,
+          "mean_proba": 0.9998222804571819
+        },
+        {
+          "family": "tcp_syn_fast",
+          "n_flows": 32010,
+          "recall": 1.0,
+          "mean_proba": 0.9999914979357739
+        },
+        {
+          "family": "tcp_syn_low",
+          "n_flows": 16018,
+          "recall": 1.0,
+          "mean_proba": 0.9999855437521091
+        }
+      ],
+      "decision_latency_s": {
+        "median": 5.0,
+        "p95": 5.0,
+        "max": 5.0,
+        "definition": "time from flow start to the freeze event (first packet beyond the window boundary), capped at W; capture-end flows capped at W"
+      }
+    }
+  },
+  "extraction_stats": [
+    {
+      "path": "E:\\archive\\Legitimate traffic\\Legitimate traffic\\Constant Packet size and constant_uniform_exponentially__poisson distributed IDP\\Constant Packet size and mix IDP_1-3.pcap",
+      "packets": 4118970,
+      "parsed": 2186132,
+      "non_ip": 5,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 2059403,
+      "duplicates": 1932833,
+      "error": null,
+      "elapsed_s": 137.09
+    },
+    {
+      "path": "E:\\archive\\Legitimate traffic\\Legitimate traffic\\HTTPERF\\httperf_2nd.pcap",
+      "packets": 256353,
+      "parsed": 133439,
+      "non_ip": 0,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 128258,
+      "duplicates": 122914,
+      "error": null,
+      "elapsed_s": 8.68
+    },
+    {
+      "path": "E:\\archive\\HTTP-Low volume-slow rate-slow body\\HTTP-Low volume-slow rate-slow body\\slowbody_2nd.pcap",
+      "packets": 96358,
+      "parsed": 50317,
+      "non_ip": 8,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 47959,
+      "duplicates": 46033,
+      "error": null,
+      "elapsed_s": 3.6
+    },
+    {
+      "path": "E:\\archive\\HTTP-Low volume-slow rate-slow body\\HTTP-Low volume-slow rate-slow body\\slowbody_3rd.pcap",
+      "packets": 113348,
+      "parsed": 59425,
+      "non_ip": 10,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 56277,
+      "duplicates": 53913,
+      "error": null,
+      "elapsed_s": 4.14
+    },
+    {
+      "path": "E:\\archive\\HTTP-Low volume-slow rate-slow header\\HTTP-Low volume-slow rate-slow header\\slow header_2nd.pcap",
+      "packets": 196568,
+      "parsed": 108170,
+      "non_ip": 11,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 98061,
+      "duplicates": 88387,
+      "error": null,
+      "elapsed_s": 6.45
+    },
+    {
+      "path": "E:\\archive\\HTTP-Low volume-slow rate-slow header\\HTTP-Low volume-slow rate-slow header\\slow header_3rd.pcap",
+      "packets": 196801,
+      "parsed": 108065,
+      "non_ip": 2,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 98172,
+      "duplicates": 88734,
+      "error": null,
+      "elapsed_s": 6.33
+    },
+    {
+      "path": "E:\\archive\\HTTP-Low volume-slow rate-slow read\\HTTP-Low volume-slow rate-slow read\\slow read_2nd.pcap",
+      "packets": 6909490,
+      "parsed": 3798116,
+      "non_ip": 19,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 3454738,
+      "duplicates": 3111355,
+      "error": null,
+      "elapsed_s": 214.87
+    },
+    {
+      "path": "E:\\archive\\http low volume low rate\\http low volume low rate\\http low rate_2nd.pcap",
+      "packets": 197222,
+      "parsed": 107565,
+      "non_ip": 17,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 98383,
+      "duplicates": 89640,
+      "error": null,
+      "elapsed_s": 7.73
+    },
+    {
+      "path": "E:\\archive\\http low volume low rate\\http low volume low rate\\http low rate_3rd.pcap",
+      "packets": 198305,
+      "parsed": 108123,
+      "non_ip": 2,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 98930,
+      "duplicates": 90180,
+      "error": null,
+      "elapsed_s": 8.29
+    },
+    {
+      "path": "E:\\archive\\TCP-SYN-low\\TCP-SYN-low\\tcp syn low_2nd.pcap",
+      "packets": 100373,
+      "parsed": 50109,
+      "non_ip": 11,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 49300,
+      "duplicates": 50253,
+      "error": null,
+      "elapsed_s": 9.66
+    },
+    {
+      "path": "E:\\archive\\TCP-SYN-fast\\TCP-SYN-fast\\tcp syn fast_2nd.pcap",
+      "packets": 96477,
+      "parsed": 48323,
+      "non_ip": 10,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 48142,
+      "duplicates": 48144,
+      "error": null,
+      "elapsed_s": 9.4
+    },
+    {
+      "path": "E:\\archive\\TCP-SYN-fast\\TCP-SYN-fast\\tcp syn fast_3rd.pcap",
+      "packets": 96450,
+      "parsed": 48315,
+      "non_ip": 2,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 48134,
+      "duplicates": 48133,
+      "error": null,
+      "elapsed_s": 8.07
+    },
+    {
+      "path": "E:\\archive\\http flood_get_post_random\\http flood_get_post_random\\http flood get_2nd.pcap",
+      "packets": 1489272,
+      "parsed": 775518,
+      "non_ip": 10,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 745887,
+      "duplicates": 713744,
+      "error": null,
+      "elapsed_s": 75.8
+    },
+    {
+      "path": "E:\\archive\\http flood_get_post_random\\http flood_get_post_random\\http flood post_2nd.pcap",
+      "packets": 1419529,
+      "parsed": 739447,
+      "non_ip": 0,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 710954,
+      "duplicates": 680082,
+      "error": null,
+      "elapsed_s": 73.53
+    },
+    {
+      "path": "E:\\archive\\http flood_get_post_random\\http flood_get_post_random\\http flood_random.pcap",
+      "packets": 1309617,
+      "parsed": 683057,
+      "non_ip": 0,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 655968,
+      "duplicates": 626560,
+      "error": null,
+      "elapsed_s": 68.72
+    },
+    {
+      "path": "E:\\archive\\Flash traffic\\Flash traffic\\flash traffic_with_r.pcap",
+      "packets": 664535,
+      "parsed": 338938,
+      "non_ip": 12,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 332196,
+      "duplicates": 325585,
+      "error": null,
+      "elapsed_s": 73.62
+    },
+    {
+      "path": "E:\\archive\\Flash traffic\\Flash traffic\\flash traffic_without r.pcap",
+      "packets": 680551,
+      "parsed": 346667,
+      "non_ip": 12,
+      "malformed": 0,
+      "nonfirst_frag": 0,
+      "vlan_frames": 340203,
+      "duplicates": 333872,
+      "error": null,
+      "elapsed_s": 89.13
+    }
+  ]
+}
