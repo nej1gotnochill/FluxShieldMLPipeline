@@ -1,4 +1,4 @@
-# FINAL ML SUMMARY — FluxShield DDoS-AT-2022 Detection Pipeline
+# FINAL ML SUMMARY — Netra DDoS-AT-2022 Detection Pipeline
 
 **Status: FROZEN** · 2026-09-08 · All metrics measured from real execution; nothing estimated or fabricated.
 

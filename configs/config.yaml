@@ -1,4 +1,4 @@
-# FluxShield ML Pipeline — configuration
+# Netra ML Pipeline — configuration
 # Overrides (highest priority first):
 #   1. Environment variables: DDOS_AT_DATASET_PATH, DDOS_AT_CONFIG
 #   2. This file

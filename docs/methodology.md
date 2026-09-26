@@ -1,6 +1,6 @@
 # Methodology
 
-End-to-end methodology of the FluxShield pipeline, from raw packets to the
+End-to-end methodology of the Netra pipeline, from raw packets to the
 frozen detector. Every claim references a measured artifact.
 
 ## 1. Dataset handling

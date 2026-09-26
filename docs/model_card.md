@@ -1,4 +1,4 @@
-# Model Card — FluxShield DDoS-AT-2022 Detector
+# Model Card — Netra DDoS-AT-2022 Detector
 
 ## Model purpose
 

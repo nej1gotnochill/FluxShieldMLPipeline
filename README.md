@@ -1,4 +1,4 @@
-# FluxShield — Passive One-Way Network Threat-Detection ML Pipeline
+# Netra — Passive One-Way Network Threat-Detection ML Pipeline
 
 Leakage-aware near-real-time DDoS flow detection on the
 [DDoS-AT-2022](https://link.springer.com/article/10.1007/s43538-023-00159-9)
@@ -208,7 +208,7 @@ Summary: [`reports/research_strengthening_summary.md`](reports/research_strength
 ## Repository structure
 
 ```
-FluxShieldMLPipeline/
+NetraMLPipeline/
 ├── README.md · FINAL_ML_SUMMARY.md · LICENSE · requirements.txt · .gitignore
 ├── configs/config.yaml            # DATASET_PATH via env var or this file
 ├── src/
@@ -232,8 +232,8 @@ FluxShieldMLPipeline/
 ## Installation
 
 ```bash
-git clone https://github.com/nej1gotnochill/FluxShieldMLPipeline.git
-cd FluxShieldMLPipeline
+git clone https://github.com/nej1gotnochill/NetraMLPipeline.git
+cd NetraMLPipeline
 python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
