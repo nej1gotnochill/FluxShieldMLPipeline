@@ -1,0 +1,2 @@
+flow_duration_s,n_packets_eff,flow_packets_s,flow_bytes_s,fwd_packets,bwd_packets,syn_count,ack_count,rst_count,psh_count,flow_iat_mean,fwd_iat_mean,bwd_iat_mean,fwd_header_bytes,bwd_header_bytes,avg_pkt_size,flow_id,capture_file,family,proba,error
+320.6019,12,0.037429597,12.351767,12.0,0.0,0.0,0.0,0.0,0.0,29.145628,29.145628,0.0,336.0,0.0,330.0,17|0.0.0.0|68|255.255.255.255|67,Constant Packet size and mix IDP_1-3.pcap,benign,0.8286036160064395,FP

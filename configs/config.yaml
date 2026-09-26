@@ -1,0 +1,39 @@
+# FluxShield ML Pipeline — configuration
+# Overrides (highest priority first):
+#   1. Environment variables: DDOS_AT_DATASET_PATH, DDOS_AT_CONFIG
+#   2. This file
+#   3. Hard-coded defaults in src/config.py
+
+dataset:
+  # Root of the locally extracted DDoS-AT-2022 raw captures (READ-ONLY).
+  # Recursively discovered by the pipeline. Never downloaded, never modified,
+  # never committed.
+  # Obtain the dataset independently (see README § Dataset) and set EITHER
+  #   DDOS_AT_DATASET_PATH=/absolute/path/to/ddos-at-2022   (environment)
+  # OR an absolute path here. Relative paths are NOT valid for the dataset.
+  dataset_path: ""
+
+paths:
+  # Relative paths are resolved against the repository root.
+  data: "data"               # gitignored: processed flow tables (parquet)
+  models: "models"           # saved pipelines + metadata
+  reports: "reports"         # human-readable audit/evaluation reports
+  experiments: "experiments" # per-run configs, metrics, predictions, importances
+
+flow_extraction:
+  flow_timeout_sec: 120        # bidirectional flow idle timeout
+  activity_timeout_sec: 1800   # hard cap on flow lifetime
+  max_packets_per_flow: 100000
+  workers: 0                   # 0 = auto (one process per physical core, capped)
+
+splits:
+  # Group key = capture file (one pcap = one capture session/run).
+  # Family-stratified, group-disjoint: no capture appears in two splits.
+  train: 0.70
+  val: 0.15
+  test: 0.15
+  random_seed: 42
+
+logging:
+  level: "INFO"
+  show_memory: true
