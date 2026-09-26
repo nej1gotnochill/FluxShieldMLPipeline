@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FluxShield — Passive One-Way Threat Intelligence</title>
+<style>
+/* ============================================================
+   FLUXSHIELD — Giga-style editorial build
+   Dark navy-green identity · flat · no gradients · no glass
+   ============================================================ */
+*,*::before,*::after{ margin:0; padding:0; box-sizing:border-box; }
+:root{
+  --bg:#061113; --bg2:#081820; --panel:#0B2023; --panel2:#0E2C2A;
+  --deep:#174844; --teal:#287F72; --mint:#40AA87; --ink:#E8EFEB;
+  --mut:#8FA6A0; --dim:#5A7370; --faint:#33504E;
+  --line:rgba(64,170,135,.14); --line2:rgba(64,170,135,.30); --hair:rgba(232,239,235,.08);
+  --amber:#D2A548; --red:#D75555;
+  --mono:'IBM Plex Mono','JetBrains Mono',ui-monospace,Consolas,monospace;
+  --sans:'Space Grotesk',Inter,system-ui,sans-serif;
+  --navh:64px;
+}
+html{ scroll-behavior:smooth; }
+body{ background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+::selection{ background:var(--teal); color:#061113; }
+::-webkit-scrollbar{ width:10px; }
+::-webkit-scrollbar-track{ background:var(--bg); }
+::-webkit-scrollbar-thumb{ background:#12312F; border:2px solid var(--bg); }
+a{ color:inherit; text-decoration:none; }
+button{ font-family:inherit; }
+
+/* ---------- top nav ---------- */
+.nav{ position:fixed; top:0; left:0; right:0; height:var(--navh); z-index:100;
+  display:flex; align-items:center; gap:40px; padding:0 clamp(20px,4vw,56px);
+  background:rgba(6,17,19,.88); border-bottom:1px solid var(--hair); backdrop-filter:blur(6px); }
+.nav .word{ font-weight:700; letter-spacing:.02em; font-size:18px; display:flex; align-items:baseline; gap:10px; }
+.nav .word em{ font-style:normal; color:var(--mint); }
+.nav .word small{ font-family:var(--mono); font-size:9px; letter-spacing:.22em; color:var(--dim); text-transform:uppercase; }
+.nav .links{ display:flex; gap:4px; margin-left:auto; }
+.nav .links a{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--mut); padding:7px 12px; border:1px solid transparent; transition:color .15s, border-color .15s, background .15s; }
+.nav .links a:hover{ color:var(--ink); border-color:var(--hair); }
+.nav .links a.on{ color:var(--mint); border-color:var(--line2); background:rgba(40,127,114,.10); }
+.nav .live{ display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10px; letter-spacing:.16em; color:var(--mut); }
+.nav .live .d{ width:6px; height:6px; background:var(--mint); }
+.nav .live .utc{ color:var(--dim); }
+@media (max-width:1180px){ .nav .links a{ padding:7px 8px; letter-spacing:.08em; } .nav .live{ display:none; } }
+@media (max-width:900px){ .nav .links{ overflow-x:auto; } }
+
+/* ---------- shared section scaffold ---------- */
+.chapter{ border-top:1px solid var(--hair); }
+.ch-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:32px;
+  padding:clamp(48px,7vh,96px) clamp(20px,5vw,72px) clamp(24px,3vh,40px); }
+.ch-no{ font-family:var(--mono); font-size:11px; letter-spacing:.3em; color:var(--mint); text-transform:uppercase; display:flex; align-items:center; gap:14px; }
+.ch-no::before{ content:''; width:34px; height:1px; background:var(--teal); }
+.ch-title{ font-size:clamp(34px,4.6vw,64px); font-weight:700; letter-spacing:-.02em; line-height:1.02; margin-top:10px; }
+.ch-title .thin{ font-weight:400; color:var(--mut); }
+.ch-side{ max-width:300px; font-size:13px; color:var(--mut); line-height:1.65; padding-bottom:6px; }
+.ch-side b{ color:var(--ink); font-weight:500; }
+.mono{ font-family:var(--mono); }
+.lbl{ font-family:var(--mono); font-size:9px; letter-spacing:.24em; color:var(--dim); text-transform:uppercase; }
+.wrap{ padding:0 clamp(20px,5vw,72px); }
+
+/* chapter 1/2 split heading */
+.ch-head.split{ align-items:flex-start; }
+.ch-head.split .ch-side{ border-left:1px solid var(--hair); padding-left:22px; padding-bottom:0; }
+
+/* ---------- HERO ---------- */
+.hero{ position:relative; min-height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+#field{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.hero .veil{ position:absolute; inset:0; pointer-events:none;
+  background:rgba(6,17,19,.28); }
+.hero-inner{ position:relative; z-index:2; margin-top:auto; padding:0 clamp(20px,5vw,72px) 0; }
+.hero-kicker{ display:flex; align-items:center; gap:14px; font-family:var(--mono); font-size:10px; letter-spacing:.3em; color:var(--mint); text-transform:uppercase; margin-bottom:26px; }
+.hero-kicker .rule{ width:56px; height:1px; background:var(--teal); }
+.hero h1{ font-size:clamp(46px,7.4vw,110px); line-height:.98; letter-spacing:-.025em; font-weight:700; }
+.hero h1 .ghost{ display:block; color:transparent; -webkit-text-stroke:1px rgba(232,239,235,.30); }
+.hero h1 .mint{ color:var(--mint); }
+.hero-sub{ max-width:520px; margin-top:28px; color:var(--mut); font-size:15px; line-height:1.7; }
+.hero-sub b{ color:var(--ink); font-weight:500; }
+.hero-cta{ display:flex; align-items:center; gap:14px; margin-top:36px; flex-wrap:wrap; }
+.cta{ display:inline-flex; align-items:center; gap:12px; font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+  padding:14px 22px; border:1px solid var(--line2); color:var(--ink); background:rgba(11,32,35,.7); cursor:pointer; transition:all .18s; }
+.cta.primary{ background:var(--mint); border-color:var(--mint); color:#061113; font-weight:700; }
+.cta.primary:hover{ background:var(--ink); border-color:var(--ink); }
+.cta:hover{ border-color:var(--mint); color:var(--mint); }
+.cta.primary:hover{ color:#061113; }
+.hero-meta{ display:flex; gap:0; margin-top:clamp(40px,7vh,84px); border-top:1px solid var(--hair); flex-wrap:wrap; }
+.hm{ flex:1 1 160px; min-width:150px; padding:16px 22px 18px 0; border-right:1px solid var(--hair); }
+.hm:last-child{ border-right:none; }
+.hm .k{ margin-bottom:5px; }
+.hm .v{ font-family:var(--mono); font-size:14px; color:var(--ink); }
+.hm .v.mint{ color:var(--mint); } .hm .v.red{ color:var(--red); } .hm .v.amber{ color:var(--amber); }
+.hero .scroll-cue{ position:absolute; right:clamp(20px,5vw,72px); bottom:26px; z-index:3;
+  font-family:var(--mono); font-size:9px; letter-spacing:.3em; color:var(--dim); text-transform:uppercase;
+  writing-mode:vertical-rl; display:flex; align-items:center; gap:10px; }
+.hero .scroll-cue::after{ content:''; width:1px; height:44px; background:linear-gradient(var(--teal),transparent); }
+@media (max-width:900px){ .hero .scroll-cue{ display:none; } }
+
+/* ---------- SECTION 01 OBSERVE ---------- */
+.observe-grid{ display:grid; grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr); gap:clamp(20px,3vw,44px);
+  padding:0 clamp(20px,5vw,72px) clamp(56px,8vh,110px); }
+.fieldbox{ position:relative; border:1px solid var(--line); background:var(--bg2); min-height:520px; }
+.fieldbox .corner{ position:absolute; font-family:var(--mono); font-size:9px; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; z-index:2; }
+.fieldbox .c-tl{ top:12px; left:14px; } .fieldbox .c-tr{ top:12px; right:14px; }
+.fieldbox .c-bl{ bottom:12px; left:14px; } .fieldbox .c-br{ bottom:12px; right:14px; }
+#field2{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.observe-side{ display:flex; flex-direction:column; }
+.obs-block{ padding:20px 0 22px; border-bottom:1px solid var(--hair); }
+.obs-block:first-child{ padding-top:6px; }
+.obs-block .row{ display:flex; justify-content:space-between; align-items:baseline; gap:14px; padding:5px 0; }
+.obs-block .row .k{ font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--dim); text-transform:uppercase; }
+.obs-block .row .v{ font-family:var(--mono); font-size:13px; color:var(--ink); text-align:right; }
+.obs-block .row .v.mint{ color:var(--mint); } .obs-block .row .v.red{ color:var(--red); } .obs-block .row .v.amber{ color:var(--amber); }
+.obs-note{ font-size:12.5px; color:var(--mut); line-height:1.7; padding-top:18px; }
+.obs-note b{ color:var(--ink); font-weight:500; }
+@media (max-width:1000px){ .observe-grid{ grid-template-columns:1fr; } .fieldbox{ min-height:420px; } }
+
+/* ---------- SECTION 02 DETECT ---------- */
+.detect-stage{ padding:0 clamp(20px,5vw,72px) clamp(56px,8vh,110px); }
+.feature-strip{ display:flex; align-items:stretch; border:1px solid var(--line); background:var(--bg2); flex-wrap:wrap; }
+.fs-cell{ flex:1 1 180px; min-width:170px; padding:26px 26px 24px; border-right:1px solid var(--hair); position:relative; }
+.fs-cell:last-child{ border-right:none; }
+.fs-cell .big{ font-family:var(--mono); font-size:clamp(28px,3.2vw,44px); color:var(--ink); line-height:1; letter-spacing:-.02em; }
+.fs-cell .big .u{ font-size:14px; color:var(--dim); margin-left:4px; }
+.fs-cell .big.mint{ color:var(--mint); }
+.fs-cell .t{ margin-top:10px; font-size:13px; color:var(--mut); }
+.fs-cell .sig{ margin-top:16px; display:flex; align-items:flex-end; gap:3px; height:34px; }
+.fs-cell .sig i{ flex:1; background:rgba(64,170,135,.34); min-height:3px; }
+.fs-cell .sig i.hi{ background:var(--mint); }
+.detect-lower{ display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:clamp(20px,3vw,44px); margin-top:clamp(24px,4vh,44px); }
+@media (max-width:1000px){ .detect-lower{ grid-template-columns:1fr; } }
+/* decision gauge */
+.dg{ border:1px solid var(--line); background:var(--bg2); padding:clamp(22px,3vw,34px); }
+.dg-scale{ position:relative; height:10px; background:#0A1A1C; margin:26px 0 10px; border:1px solid var(--line); }
+.dg-scale .fill{ position:absolute; left:0; top:0; bottom:0; width:57.2%; background:var(--teal); transition:width .5s ease; }
+.dg-scale .thr{ position:absolute; left:50%; top:-8px; bottom:-8px; width:1px; background:var(--amber); }
+.dg-scale .thr::after{ content:'THRESHOLD 0.50'; position:absolute; top:-18px; left:50%; transform:translateX(-50%);
+  font-family:var(--mono); font-size:8.5px; letter-spacing:.18em; color:var(--amber); white-space:nowrap; }
+.dg-ticks{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:9px; color:var(--faint); }
+.dg-readout{ display:flex; justify-content:space-between; align-items:baseline; margin-top:34px; gap:16px; flex-wrap:wrap; }
+.dg-readout .score{ font-family:var(--mono); font-size:clamp(38px,4vw,58px); line-height:1; color:var(--mint); }
+.dg-readout .verdict{ text-align:right; }
+.dg-readout .verdict .lbl{ display:block; margin-bottom:4px; }
+.dg-readout .verdict .b{ font-family:var(--mono); font-size:15px; letter-spacing:.14em; color:var(--mint); }
+/* window tape */
+.tape{ border:1px solid var(--line); background:var(--bg2); padding:clamp(22px,3vw,34px); }
+.tape .rows{ margin-top:20px; display:flex; flex-direction:column; }
+.trow{ display:grid; grid-template-columns:64px 1fr 74px 84px; gap:14px; align-items:center; padding:9px 0; border-bottom:1px solid var(--hair); font-family:var(--mono); }
+.trow:last-child{ border-bottom:none; }
+.trow .id{ font-size:11px; color:var(--dim); }
+.trow .bar{ height:5px; background:#0A1A1C; position:relative; }
+.trow .bar i{ position:absolute; left:0; top:0; bottom:0; background:var(--teal); }
+.trow .sc{ font-size:12px; text-align:right; color:var(--ink); }
+.trow .vd{ font-size:9px; letter-spacing:.18em; text-align:right; color:var(--mint); }
+.trow.hot .bar i{ background:var(--red); } .trow.hot .vd{ color:var(--red); }
+.trow.warm .bar i{ background:var(--amber); } .trow.warm .vd{ color:var(--amber); }
+
+/* ---------- SECTION 03 UNDERSTAND ---------- */
+.und-stage{ padding:0 clamp(20px,5vw,72px) clamp(56px,8vh,110px); display:grid; grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr); gap:clamp(20px,3vw,44px); }
+@media (max-width:1000px){ .und-stage{ grid-template-columns:1fr; } }
+.pathstage{ border:1px solid var(--line); background:var(--bg2); position:relative; min-height:460px; overflow:hidden; }
+.pathstage svg{ position:absolute; inset:0; width:100%; height:100%; }
+.hop{ position:absolute; transform:translate(-50%,-50%); border:1px solid var(--line2); background:rgba(8,24,32,.94); padding:12px 16px; min-width:150px; cursor:pointer; transition:border-color .15s, background .15s; }
+.hop:hover{ border-color:var(--mint); }
+.hop.sel{ border-color:var(--mint); background:rgba(23,72,68,.5); }
+.hop .k{ display:flex; justify-content:space-between; gap:12px; margin-bottom:4px; }
+.hop .nm{ font-family:var(--mono); font-size:14px; color:var(--ink); }
+.hop .ip{ font-family:var(--mono); font-size:10px; color:var(--dim); margin-top:2px; }
+.hop .rk{ font-family:var(--mono); font-size:9px; letter-spacing:.14em; margin-top:6px; color:var(--dim); }
+.hop.hot{ border-top:2px solid var(--red); } .hop.hot .k .kk{ color:var(--red); }
+.hop.warm{ border-top:2px solid var(--amber); } .hop.warm .k .kk{ color:var(--amber); }
+.hop.cool{ border-top:2px solid var(--teal); }
+.und-side .ev{ border:1px solid var(--line); background:var(--bg2); padding:clamp(20px,2.6vw,30px); margin-bottom:22px; }
+.ev-row{ display:grid; grid-template-columns:78px 1fr 58px; gap:12px; padding:8px 0; border-bottom:1px solid var(--hair); font-family:var(--mono); font-size:11px; align-items:center; }
+.ev-row:last-child{ border-bottom:none; }
+.ev-row .fid{ color:var(--dim); }
+.ev-row .route{ color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ev-row .route b{ color:var(--ink); font-weight:400; }
+.ev-row .rs{ text-align:right; }
+.flow-meta{ display:flex; gap:0; border:1px solid var(--line); background:var(--bg2); flex-wrap:wrap; }
+.fm{ flex:1 1 110px; padding:14px 16px; border-right:1px solid var(--hair); }
+.fm:last-child{ border-right:none; }
+.fm .k{ margin-bottom:4px; }
+.fm .v{ font-family:var(--mono); font-size:12px; color:var(--ink); }
+
+/* ---------- SECTION 04 FORECAST ---------- */
+.fc-stage{ padding:0 clamp(20px,5vw,72px) clamp(56px,8vh,110px); }
+.fc-headline{ display:grid; grid-template-columns:minmax(240px,.9fr) minmax(240px,.9fr) 1fr; gap:clamp(18px,2.6vw,36px); align-items:stretch; margin-bottom:clamp(24px,4vh,44px); }
+@media (max-width:1000px){ .fc-headline{ grid-template-columns:1fr; } }
+.fc-num{ border:1px solid var(--line); background:var(--bg2); padding:clamp(22px,3vw,32px); position:relative; }
+.fc-num .n{ font-family:var(--mono); font-size:clamp(44px,5vw,72px); line-height:1; letter-spacing:-.03em; margin-top:14px; }
+.fc-num .n.red{ color:var(--red); } .fc-num .n.mint{ color:var(--mint); } .fc-num .n.amber{ color:var(--amber); }
+.fc-num .s{ font-family:var(--mono); font-size:10px; color:var(--dim); margin-top:10px; letter-spacing:.12em; }
+.fc-branch{ display:flex; align-items:center; gap:18px; border:1px solid var(--line); background:var(--bg2); padding:0 clamp(18px,2.4vw,28px); cursor:pointer; transition:border-color .15s, background .15s; }
+.fc-branch:hover{ border-color:var(--mint); }
+.fc-branch.sel{ border-color:var(--mint); background:rgba(23,72,68,.42); }
+.fc-branch .bid{ font-family:var(--mono); font-size:clamp(30px,3.4vw,48px); color:var(--mint); }
+.fc-branch.hot .bid{ color:var(--red); }
+.fc-branch .bi .bt{ font-size:14px; color:var(--ink); }
+.fc-branch .bi .bm{ font-family:var(--mono); font-size:10px; color:var(--dim); margin-top:3px; letter-spacing:.08em; }
+.fc-branch .bp{ margin-left:auto; font-family:var(--mono); font-size:13px; color:var(--mut); white-space:nowrap; }
+.fc-canvas{ border:1px solid var(--line); background:var(--bg2); padding:clamp(18px,2.6vw,30px) clamp(12px,2vw,24px); }
+.fc-canvas svg{ display:block; width:100%; height:auto; }
+.fc-legend{ display:flex; gap:26px; flex-wrap:wrap; margin-top:16px; }
+.fc-legend .li{ display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:9px; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; }
+.fc-legend .sw{ width:18px; height:2px; }
+.fc-legend .sw.fill{ height:10px; background:rgba(64,170,135,.14); border:1px solid var(--line2); }
+
+/* ---------- SECTION 05 EARLY DETECTION ---------- */
+.early-stage{ padding:0 clamp(20px,5vw,72px) clamp(56px,8vh,110px); }
+.early-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(16px,2.4vw,32px); }
+@media (max-width:1000px){ .early-grid{ grid-template-columns:1fr; } }
+.ecard{ border:1px solid var(--line); background:var(--bg2); padding:clamp(24px,3vw,36px) clamp(22px,2.8vw,34px); position:relative; overflow:hidden; }
+.ecard .t-label{ display:flex; justify-content:space-between; align-items:baseline; }
+.ecard .t-big{ font-family:var(--mono); font-size:clamp(52px,6vw,84px); line-height:1; letter-spacing:-.03em; margin:18px 0 6px; color:var(--ink); }
+.ecard .t-big .u{ font-size:18px; color:var(--dim); }
+.ecard .recall{ font-family:var(--mono); font-size:clamp(26px,3vw,40px); color:var(--mint); letter-spacing:-.02em; }
+.ecard .recall .pc{ font-size:15px; color:var(--dim); margin-left:2px; }
+.ecard.e1 .t-big{ color:var(--amber); } .ecard.e1 .recall{ color:var(--amber); }
+.ecard .partial{ margin-top:26px; }
+.ecard .pbar{ height:5px; background:#0A1A1C; position:relative; overflow:hidden; }
+.ecard .pbar i{ position:absolute; left:0; top:0; bottom:0; background:var(--teal); }
+.ecard.e1 .pbar i{ background:var(--amber); }
+.ecard .pbar .ghostbar{ position:absolute; left:0; top:0; bottom:0; width:100%; background:repeating-linear-gradient(90deg, rgba(64,170,135,.07) 0 4px, transparent 4px 8px); }
+.ecard .pmeta{ display:flex; justify-content:space-between; margin-top:8px; font-family:var(--mono); font-size:9px; color:var(--dim); letter-spacing:.14em; }
+.early-note{ margin-top:clamp(22px,4vh,40px); max-width:640px; font-size:13.5px; color:var(--mut); line-height:1.75; }
+.early-note b{ color:var(--ink); font-weight:500; }
+.early-note .mono{ font-size:12px; }
+
+/* ---------- SECTION 06 INVESTIGATE ---------- */
+.inv-stage{ padding:0 clamp(20px,5vw,72px) clamp(56px,8vh,110px); }
+.inv-headline{ display:flex; align-items:baseline; justify-content:space-between; gap:24px; flex-wrap:wrap; margin-bottom:clamp(20px,3vh,34px); }
+.inv-host{ font-family:var(--mono); font-size:clamp(30px,4vw,54px); letter-spacing:-.02em; line-height:1; }
+.inv-host .ip{ font-size:14px; color:var(--dim); margin-left:14px; letter-spacing:0; }
+.inv-risk{ text-align:right; }
+.inv-risk .n{ font-family:var(--mono); font-size:clamp(30px,4vw,50px); line-height:1; color:var(--red); letter-spacing:-.02em; }
+.inv-risk .k{ margin-top:6px; display:block; }
+.inv-grid{ display:grid; grid-template-columns:minmax(0,1.45fr) minmax(300px,1fr); gap:clamp(20px,3vw,44px); }
+@media (max-width:1000px){ .inv-grid{ grid-template-columns:1fr; } }
+.inv-chart{ border:1px solid var(--line); background:var(--bg2); padding:clamp(18px,2.6vw,30px) clamp(12px,2vw,24px); }
+.inv-chart svg{ display:block; width:100%; height:auto; }
+.inv-side .blk{ border:1px solid var(--line); background:var(--bg2); padding:clamp(20px,2.6vw,30px); margin-bottom:22px; }
+.blk-title{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:16px; }
+.kv-list .kv{ display:flex; justify-content:space-between; gap:14px; padding:7px 0; border-bottom:1px solid var(--hair); }
+.kv-list .kv:last-child{ border-bottom:none; }
+.kv-list .k{ font-family:var(--mono); font-size:9.5px; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; }
+.kv-list .v{ font-family:var(--mono); font-size:12px; color:var(--ink); text-align:right; }
+.kv-list .v.mint{ color:var(--mint); } .kv-list .v.red{ color:var(--red); } .kv-list .v.amber{ color:var(--amber); }
+
+/* ---------- SECTION 07 SIMULATE ---------- */
+.sim-stage{ padding:0 clamp(20px,5vw,72px) clamp(56px,8vh,110px); }
+.sim-actions{ display:flex; gap:clamp(14px,2vw,24px); flex-wrap:wrap; margin-bottom:clamp(24px,4vh,44px); }
+.sim-btn{ font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; padding:14px 24px;
+  background:transparent; border:1px solid var(--line2); color:var(--mut); cursor:pointer; transition:all .18s; }
+.sim-btn:hover{ color:var(--ink); border-color:var(--mint); }
+.sim-btn.on{ background:var(--mint); color:#061113; border-color:var(--mint); font-weight:700; }
+.sim-compare{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:clamp(16px,2.4vw,32px); align-items:stretch; }
+@media (max-width:1000px){ .sim-compare{ grid-template-columns:1fr; } }
+.sim-panel{ border:1px solid var(--line); background:var(--bg2); padding:clamp(22px,3vw,34px); }
+.sim-panel.future{ border-color:var(--line2); }
+.sim-panel .ttl{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:22px; }
+.sim-panel .ttl .nm{ font-family:var(--mono); font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--mut); }
+.sim-panel.future .ttl .nm{ color:var(--mint); }
+.sim-panel .risk{ font-family:var(--mono); font-size:clamp(44px,5vw,72px); line-height:1; letter-spacing:-.03em; color:var(--ink); }
+.sim-panel.future .risk{ color:var(--mint); }
+.sim-panel .risk small{ font-size:16px; color:var(--dim); margin-left:8px; letter-spacing:0; }
+.sim-delta{ display:flex; align-items:baseline; gap:10px; margin-top:14px; font-family:var(--mono); font-size:11px; color:var(--dim); letter-spacing:.1em; }
+.sim-delta .d{ color:var(--mint); font-size:14px; }
+.sim-facts{ margin-top:26px; }
+.sim-banner{ margin-top:clamp(26px,4vh,44px); border:1px solid var(--line2); padding:18px 24px;
+  display:flex; align-items:center; gap:20px; flex-wrap:wrap; background:rgba(23,72,68,.16); }
+.sim-banner .b1{ font-family:var(--mono); font-size:11px; letter-spacing:.26em; color:var(--mint); text-transform:uppercase; font-weight:700; }
+.sim-banner .b2{ font-family:var(--mono); font-size:10px; letter-spacing:.2em; color:var(--mut); text-transform:uppercase; }
+
+/* ---------- SECTION 08 REPLAY ---------- */
+.rep-stage{ padding:0 clamp(20px,5vw,72px) clamp(56px,8vh,110px); }
+.rep-clocks{ display:flex; align-items:stretch; gap:clamp(16px,2.4vw,34px); flex-wrap:wrap; margin-bottom:clamp(22px,3.4vh,36px); }
+.rep-clock-main{ font-family:var(--mono); font-size:clamp(52px,6.4vw,96px); line-height:.95; letter-spacing:-.03em; }
+.rep-clock-main .frac{ color:var(--faint); }
+.rep-stat{ padding-left:clamp(14px,2vw,26px); border-left:1px solid var(--hair); display:flex; flex-direction:column; justify-content:center; min-width:110px; }
+.rep-stat .v{ font-family:var(--mono); font-size:clamp(18px,2vw,26px); margin-top:6px; }
+.rep-stat .v.red{ color:var(--red); } .rep-stat .v.mint{ color:var(--mint); } .rep-stat .v.amber{ color:var(--amber); }
+.rep-controls{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+.rc{ font-family:var(--mono); font-size:11px; letter-spacing:.1em; padding:9px 15px; background:transparent;
+  border:1px solid var(--line); color:var(--mut); cursor:pointer; transition:all .15s; }
+.rc:hover{ color:var(--ink); border-color:var(--line2); }
+.rc.on{ background:var(--mint); border-color:var(--mint); color:#061113; font-weight:700; }
+.seg{ display:flex; }
+.seg .rc{ border-right-width:0; }
+.seg .rc:last-child{ border-right-width:1px; }
+.rep-state{ font-family:var(--mono); font-size:10px; letter-spacing:.2em; color:var(--mint); margin-left:auto; }
+.rep-state.paused{ color:var(--amber); }
+.rep-timeline{ border:1px solid var(--line); background:var(--bg2); padding:clamp(18px,2.6vw,30px) clamp(14px,2vw,26px); }
+.rep-timeline svg{ display:block; width:100%; height:auto; cursor:crosshair; }
+.rep-bottom{ display:grid; grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr); gap:clamp(18px,2.6vw,34px); margin-top:clamp(18px,2.8vh,30px); }
+@media (max-width:1000px){ .rep-bottom{ grid-template-columns:1fr; } }
+.rep-flows{ border:1px solid var(--line); background:var(--bg2); overflow:hidden; }
+.rf-head{ display:flex; justify-content:space-between; gap:14px; align-items:baseline; padding:14px 18px; border-bottom:1px solid var(--hair); flex-wrap:wrap; }
+.rf-head .w{ font-family:var(--mono); font-size:12px; color:var(--ink); }
+.rf-head .d{ font-family:var(--mono); font-size:10px; color:var(--dim); }
+.flow-table{ width:100%; border-collapse:collapse; font-family:var(--mono); }
+.flow-table th{ text-align:left; font-size:8.5px; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; font-weight:400; padding:8px 10px; border-bottom:1px solid var(--hair); white-space:nowrap; }
+.flow-table td{ font-size:10.5px; color:var(--mut); padding:6px 10px; border-bottom:1px solid var(--hair); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.flow-table tr:hover td{ background:rgba(40,127,114,.06); }
+.flow-table tr.onpath td:first-child{ box-shadow:inset 2px 0 0 var(--red); }
+.flow-table td.num{ text-align:right; color:var(--ink); }
+.rep-side{ display:flex; flex-direction:column; }
+.rep-side .blk{ border:1px solid var(--line); background:var(--bg2); padding:clamp(20px,2.6vw,28px); margin-bottom:22px; flex:none; }
+.rep-side .blk:last-child{ flex:1; }
+.rs-risk{ font-family:var(--mono); font-size:clamp(40px,4.4vw,64px); line-height:1; letter-spacing:-.03em; margin-top:10px; }
+.lattice{ display:grid; grid-template-columns:repeat(8,1fr); gap:4px; margin-top:14px; }
+.lattice i{ display:block; height:16px; background:repeating-linear-gradient(45deg, rgba(64,170,135,.10) 0 2px, transparent 2px 5px); border:1px solid var(--line); }
+.lattice i.hot{ border-color:var(--red); }
+
+/* ---------- SECTION 09 INCIDENTS ---------- */
+.inc-stage{ padding:0 clamp(20px,5vw,72px) clamp(56px,8vh,110px); }
+.inc-index{ border-top:1px solid var(--line2); }
+.inc-row{ display:grid; grid-template-columns:110px 110px minmax(0,1.5fr) minmax(0,1fr) 90px 80px 70px; gap:clamp(12px,2vw,28px); align-items:baseline;
+  padding:clamp(16px,2.4vh,24px) 4px; border-bottom:1px solid var(--hair); cursor:pointer; transition:background .15s; }
+.inc-row:hover{ background:rgba(40,127,114,.05); }
+.inc-row.sel{ background:rgba(23,72,68,.22); }
+.inc-row .iid{ font-family:var(--mono); font-size:clamp(14px,1.5vw,19px); color:var(--ink); letter-spacing:.02em; }
+.inc-row .sev{ font-family:var(--mono); font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:var(--amber); }
+.inc-row .sev.crit{ color:var(--red); }
+.inc-row .sev.ok{ color:var(--mint); }
+.inc-row .tech{ font-size:14px; color:var(--ink); }
+.inc-row .tech small{ display:block; font-family:var(--mono); font-size:10px; color:var(--dim); margin-top:2px; }
+.inc-row .tgt{ font-family:var(--mono); font-size:11px; color:var(--mut); }
+.inc-row .num{ font-family:var(--mono); font-size:13px; color:var(--ink); text-align:right; }
+.inc-row .num .k{ display:block; text-align:right; }
+.inc-detail{ margin-top:clamp(28px,4vh,46px); border:1px solid var(--line); background:var(--bg2); }
+.inc-detail-grid{ display:grid; grid-template-columns:minmax(0,1.35fr) minmax(280px,1fr); }
+@media (max-width:1000px){ .inc-detail-grid{ grid-template-columns:1fr; } }
+.inc-left{ padding:clamp(24px,3vw,40px); border-right:1px solid var(--hair); }
+.inc-right{ padding:clamp(24px,3vw,40px); }
+.inc-title{ font-size:clamp(22px,2.6vw,34px); letter-spacing:-.02em; font-weight:700; }
+.inc-title .mono{ font-size:.6em; color:var(--mint); margin-right:12px; letter-spacing:.04em; }
+.inc-acts{ display:flex; gap:10px; flex-wrap:wrap; margin-top:26px; }
+.ia{ font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; padding:11px 18px;
+  background:transparent; border:1px solid var(--line2); color:var(--mut); cursor:pointer; transition:all .15s; }
+.ia:hover{ color:var(--ink); border-color:var(--mint); }
+.ia.danger{ border-color:rgba(215,85,85,.5); color:var(--red); }
+.ia.danger:hover{ background:var(--red); border-color:var(--red); color:#061113; }
+.ia.go{ background:var(--mint); border-color:var(--mint); color:#061113; font-weight:700; }
+.blastpath{ margin-top:30px; display:flex; align-items:center; gap:0; flex-wrap:wrap; row-gap:18px; }
+.bnode{ border:1px solid var(--line2); padding:10px 14px; min-width:120px; background:rgba(6,17,19,.6); }
+.bnode .k{ margin-bottom:3px; }
+.bnode.hot{ border-top:2px solid var(--red); } .bnode.warm{ border-top:2px solid var(--amber); }
+.blink{ width:clamp(22px,3vw,42px); height:1px; background:var(--line2); margin:0 6px; position:relative; }
+.blink.hot{ height:2px; background:var(--red); }
+.blink.warm{ height:2px; background:var(--amber); }
+.blink::after{ content:''; position:absolute; right:0; top:-2.5px; border-left:5px solid var(--line2); border-top:3px solid transparent; border-bottom:3px solid transparent; }
+.blink.hot::after{ border-left-color:var(--red); top:-2px; }
+.blink.warm::after{ border-left-color:var(--amber); top:-2px; }
+@media (max-width:1180px){ .inc-row{ grid-template-columns:95px 90px minmax(0,1.5fr) minmax(0,1fr) 70px 60px 56px; gap:10px; } }
+@media (max-width:900px){ .inc-row{ grid-template-columns:90px 84px minmax(0,1fr) 60px; } .inc-row .tgt, .inc-row .num:nth-child(6){ display:none; } }
+
+/* ---------- SECTION 10 MODEL ---------- */
+.model-stage{ padding:0 clamp(20px,5vw,72px) clamp(40px,6vh,80px); }
+.model-head{ display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:clamp(20px,3vw,44px); align-items:end; margin-bottom:clamp(28px,4vh,46px); }
+@media (max-width:1000px){ .model-head{ grid-template-columns:1fr; } }
+.spec-table{ width:100%; border-collapse:collapse; }
+.spec-table td{ padding:12px 0; border-bottom:1px solid var(--hair); vertical-align:baseline; }
+.spec-table td.k{ font-family:var(--mono); font-size:9.5px; letter-spacing:.22em; color:var(--dim); text-transform:uppercase; width:38%; padding-right:16px; }
+.spec-table td.v{ font-family:var(--mono); font-size:14px; color:var(--ink); }
+.spec-table td.v.mint{ color:var(--mint); }
+.final-grid{ display:flex; flex-wrap:wrap; border:1px solid var(--line); background:var(--bg2); }
+.fg{ flex:1 1 150px; min-width:140px; padding:22px 24px; border-right:1px solid var(--hair); }
+.fg:last-child{ border-right:none; }
+.fg .k{ margin-bottom:8px; }
+.fg .v{ font-family:var(--mono); font-size:clamp(20px,2.2vw,30px); color:var(--mint); letter-spacing:-.01em; }
+.fg .v small{ font-size:11px; color:var(--dim); }
+
+/* ---------- footer ---------- */
+.footer{ border-top:1px solid var(--hair); padding:34px clamp(20px,5vw,72px) 44px; display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+.footer .f1{ font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--dim); text-transform:uppercase; }
+.footer .f1 b{ color:var(--mut); font-weight:400; }
+
+/* toast */
+#toast{ position:fixed; bottom:22px; right:22px; z-index:200; display:flex; flex-direction:column; gap:8px; }
+.toast-item{ background:#0B2023; border:1px solid var(--line2); border-left:2px solid var(--mint);
+  padding:11px 15px; font-family:var(--mono); font-size:11px; color:var(--mut); max-width:360px; }
+.toast-item .tt{ color:var(--ink); }
+.toast-item.amber{ border-left-color:var(--amber); } .toast-item.red{ border-left-color:var(--red); }
+</style>
+</head>
+<body>
+
+<!-- ================= NAV ================= -->
+<header class="nav">
+  <a class="word" href="#top">Flux<em>Shield</em> <small>Passive One-Way Intelligence</small></a>
+  <nav class="links" id="navlinks">
+    <a href="#observe" data-t="observe">Observe</a>
+    <a href="#detect" data-t="detect">Detect</a>
+    <a href="#forecast" data-t="forecast">Forecast</a>
+    <a href="#early" data-t="early">Early</a>
+    <a href="#investigate" data-t="investigate">Investigate</a>
+    <a href="#replay" data-t="replay">Replay</a>
+    <a href="#incidents" data-t="incidents">Incidents</a>
+    <a href="#model" data-t="model">Model</a>
+    <a href="#simulate" data-t="simulate">Controls</a>
+  </nav>
+  <div class="live"><span class="d"></span>LIVE <span class="utc" id="utc">--:--:--</span> UTC</div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section class="hero" id="top">
+  <canvas id="field"></canvas>
+  <div class="veil"></div>
+  <div class="hero-inner">
+    <div class="hero-kicker"><span class="rule"></span>Live network field · Enterprise segment · SPAN/TAP</div>
+    <h1>SEE THE THREAT<br><span class="ghost">BEFORE IT TOUCHES</span><br>THE NETWORK<span class="mint">.</span></h1>
+    <p class="hero-sub"><b>Passive network intelligence</b>, behavioral DDoS detection, and predictive threat analysis for one-way environments. FluxShield watches a mirror of your network — and never touches it.</p>
+    <div class="hero-cta">
+      <button class="cta primary" onclick="document.getElementById('observe').scrollIntoView({behavior:'smooth'})">Enter Operations <span class="mono">→</span></button>
+      <button class="cta" onclick="document.getElementById('replay').scrollIntoView({behavior:'smooth'})">Explore Replay</button>
+    </div>
+    <div class="hero-meta">
+      <div class="hm"><div class="k lbl">Observed Risk</div><div class="v red">0.739</div></div>
+      <div class="hm"><div class="k lbl">Forecast Peak</div><div class="v amber">0.953</div></div>
+      <div class="hm"><div class="k lbl">Predicted Technique</div><div class="v">T1190 <span style="color:var(--dim)">Exploit Public-Facing App</span></div></div>
+      <div class="hm"><div class="k lbl">Early Detection</div><div class="v mint">99.79% <span style="color:var(--dim)">@ 3s</span></div></div>
+      <div class="hm"><div class="k lbl">Sensor</div><div class="v mint">RUNNING · ONE-WAY</div></div>
+      <div class="hm"><div class="k lbl">Capture</div><div class="v">90 windows · 2.0 s</div></div>
+    </div>
+  </div>
+  <div class="scroll-cue">Scroll</div>
+</section>
+
+<!-- ================= 01 OBSERVE ================= -->
+<section class="chapter" id="observe">
+  <div class="ch-head split">
+    <div>
+      <div class="ch-no">Section 01 — Observe</div>
+      <h2 class="ch-title">Passive one-way<br>network visibility<span class="thin">.</span></h2>
+    </div>
+    <div class="ch-side">FluxShield reads a <b>SPAN/TAP mirror</b>. Every flow in the segment is reconstructed into behavioral windows — with zero packets injected back into production.</div>
+  </div>
+  <div class="observe-grid">
+    <div class="fieldbox">
+      <span class="corner c-tl">Live network field</span>
+      <span class="corner c-tr">External → DMZ → App → DB → Critical</span>
+      <span class="corner c-bl" id="f2-meta">flows 2.3k · hosts 13 · zones 7</span>
+      <span class="corner c-br">teal normal · amber suspicious · red high-risk</span>
+      <canvas id="field2"></canvas>
+    </div>
+    <div class="observe-side">
+      <div class="obs-block">
+        <div class="lbl" style="margin-bottom:10px">Sensor chain</div>
+        <div class="row"><span class="k">Capture source</span><span class="v">SPAN / ONE-WAY</span></div>
+        <div class="row"><span class="k">Sensor state</span><span class="v mint">RUNNING</span></div>
+        <div class="row"><span class="k">Inference</span><span class="v mint">LIVE</span></div>
+        <div class="row"><span class="k">Pipeline latency</span><span class="v">11.7 ms</span></div>
+        <div class="row"><span class="k">Packet loss</span><span class="v">3.03%</span></div>
+      </div>
+      <div class="obs-block">
+        <div class="lbl" style="margin-bottom:10px">Current window · #90</div>
+        <div class="row"><span class="k">Throughput</span><span class="v">547.9 Mb/s</span></div>
+        <div class="row"><span class="k">Active flows</span><span class="v">1.5k</span></div>
+        <div class="row"><span class="k">Packets</span><span class="v">11.2k</span></div>
+        <div class="row"><span class="k">Anomaly</span><span class="v red">95.3%</span></div>
+        <div class="row"><span class="k">Observed risk</span><span class="v red">0.739</span></div>
+      </div>
+      <div class="obs-note">Traffic in the field is colored by verdict. <b>Teal flows are nominal</b>; the red thread from the external source is the active brute-force chain targeting <b class="mono">dmz-web 10.0.3.10</b>. The sensor tap is read-only — shown dashed.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 02 DETECT ================= -->
+<section class="chapter" id="detect">
+  <div class="ch-head split">
+    <div>
+      <div class="ch-no">Section 02 — Detect</div>
+      <h2 class="ch-title">Flow-level behavioral<br>detection<span class="thin">.</span></h2>
+    </div>
+    <div class="ch-side">Each 2-second window becomes <b>66 behavioral features</b> — rates, ratios, embeddings — scored by <b>300 ExtraTrees</b>, squeezed into a probability by <b>sigmoid calibration</b>.</div>
+  </div>
+  <div class="detect-stage">
+    <div class="feature-strip">
+      <div class="fs-cell"><div class="big">66</div><div class="t">behavioral features per window — rates, directions, peer structure, embedding tone</div><div class="sig" id="sig1"></div></div>
+      <div class="fs-cell"><div class="big">300</div><div class="t">ExtraTrees estimators — capture-disjoint training, attack-family holdout</div><div class="sig" id="sig2"></div></div>
+      <div class="fs-cell"><div class="big">Sigmoid</div><div class="t">Platt calibration — raw votes to an honest probability</div><div class="sig" id="sig3"></div></div>
+      <div class="fs-cell"><div class="big">0.50</div><div class="t">operating threshold — every window is a binary call above it</div><div class="sig" id="sig4"></div></div>
+      <div class="fs-cell"><div class="big mint">2.0<span class="u">s</span></div><div class="t">window length — the finest grain of the detection timeline</div><div class="sig" id="sig5"></div></div>
+    </div>
+    <div class="detect-lower">
+      <div class="dg">
+        <div class="lbl">Decision · window #90</div>
+        <div class="dg-scale"><span class="fill" id="dgfill"></span><span class="thr"></span></div>
+        <div class="dg-ticks"><span>0.0</span><span>0.25</span><span>0.5</span><span>0.75</span><span>1.0</span></div>
+        <div class="dg-readout">
+          <div class="score" id="dgscore">0.739</div>
+          <div class="verdict"><span class="lbl">Verdict</span><span class="b" id="dgverdict">ATTACK — 0.739 ≥ 0.50</span></div>
+        </div>
+      </div>
+      <div class="tape">
+        <div class="lbl">Recent windows</div>
+        <div class="rows" id="tapeRows"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 03 UNDERSTAND ================= -->
+<section class="chapter" id="understand">
+  <div class="ch-head split">
+    <div>
+      <div class="ch-no">Section 03 — Understand</div>
+      <h2 class="ch-title">Host and attack<br>relationships<span class="thin">.</span></h2>
+    </div>
+    <div class="ch-side">The active attack path, hop by hop. <b>Select a host</b> to pull its flow evidence and risk state into the side rail.</div>
+  </div>
+  <div class="und-stage">
+    <div class="pathstage" id="pathstage">
+      <span class="corner c-tl" style="position:absolute;z-index:2">Attack path · campaign #1</span>
+      <span class="corner c-br" style="position:absolute;z-index:2">click a host to inspect</span>
+    </div>
+    <div class="und-side">
+      <div class="ev">
+        <div class="blk-title"><span class="lbl">Flow evidence · selected host</span><span class="lbl" id="evCount">4 of 58</span></div>
+        <div id="evRows"></div>
+      </div>
+      <div class="flow-meta" id="hostMeta"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 04 FORECAST ================= -->
+<section class="chapter" id="forecast">
+  <div class="ch-head split">
+    <div>
+      <div class="ch-no">Section 04 — Forecast</div>
+      <h2 class="ch-title">Where the attack<br>goes next<span class="thin">.</span></h2>
+    </div>
+    <div class="ch-side">Branch-weighted futures from the technique head. <b>Select a branch</b> — the trajectory recomposes and the predicted technique follows.</div>
+  </div>
+  <div class="fc-stage">
+    <div class="fc-headline">
+      <div class="fc-num"><div class="lbl">Current risk</div><div class="n red">0.739</div><div class="s">OBSERVED · WINDOW #90</div></div>
+      <div class="fc-num"><div class="lbl">Forecast peak</div><div class="n amber">0.953</div><div class="s">HORIZON +16 S · K=8</div></div>
+      <div id="branchList"></div>
+    </div>
+    <div class="fc-canvas" id="fcCanvas"></div>
+    <div class="fc-legend">
+      <span class="li"><span class="sw" style="background:#cfc6a0"></span>Observed risk</span>
+      <span class="li"><span class="sw" style="background:var(--mint)"></span>Forecast — selected branch</span>
+      <span class="li"><span class="sw" style="background:#5A7370"></span>Forecast — other branches</span>
+      <span class="li"><span class="sw fill"></span>95% conformal band</span>
+      <span class="li"><span class="sw" style="border-top:1px dashed var(--red);height:0;background:none"></span>Alert threshold 0.65</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 05 EARLY DETECTION ================= -->
+<section class="chapter" id="early">
+  <div class="ch-head split">
+    <div>
+      <div class="ch-no">Section 05 — Early Detection</div>
+      <h2 class="ch-title">Ahead of the<br>milestone<span class="thin">.</span></h2>
+    </div>
+    <div class="ch-side">Recall measured on <b>partial flow evidence</b> — the detector fires while the attack window is still being written.</div>
+  </div>
+  <div class="early-stage">
+    <div class="early-grid">
+      <div class="ecard e1">
+        <div class="t-label"><span class="lbl">Elapsed</span><span class="lbl mono" style="color:var(--amber)">PARTIAL WINDOW</span></div>
+        <div class="t-big">1<span class="u"> s</span></div>
+        <div class="recall">68.16<span class="pc">%</span></div>
+        <div class="partial"><div class="pbar"><span class="ghostbar"></span><i style="width:34%"></i></div>
+        <div class="pmeta"><span>FLOW EVIDENCE 34%</span><span>RECALL 68.16%</span></div></div>
+      </div>
+      <div class="ecard">
+        <div class="t-label"><span class="lbl">Elapsed</span><span class="lbl mono" style="color:var(--mint)">SIGNATURE FORMING</span></div>
+        <div class="t-big">3<span class="u"> s</span></div>
+        <div class="recall">99.79<span class="pc">%</span></div>
+        <div class="partial"><div class="pbar"><span class="ghostbar"></span><i style="width:78%"></i></div>
+        <div class="pmeta"><span>FLOW EVIDENCE 78%</span><span>RECALL 99.79%</span></div></div>
+      </div>
+      <div class="ecard">
+        <div class="t-label"><span class="lbl">Elapsed</span><span class="lbl mono" style="color:var(--mint)">WINDOW COMPLETE</span></div>
+        <div class="t-big">5<span class="u"> s</span></div>
+        <div class="recall">99.79<span class="pc">%</span></div>
+        <div class="partial"><div class="pbar"><span class="ghostbar"></span><i style="width:100%"></i></div>
+        <div class="pmeta"><span>FLOW EVIDENCE 100%</span><span>RECALL 99.79%</span></div></div>
+      </div>
+    </div>
+    <p class="early-note">At <b class="mono">+1 s</b> only about a third of the first attack window has been observed — the model still recovers <b class="mono">68.16%</b> of attacks. Two seconds later the behavioral signature is complete enough for <b class="mono">99.79%</b> recall, and it holds. On <b>unseen attack families</b> (Track B holdout) recall is <b class="mono">97.40%</b>. Lead time against the first InitialAccess milestone on the current capture: <b class="mono">6.8 s</b>.</p>
+  </div>
+</section>
+
+<!-- ================= 06 INVESTIGATE ================= -->
+<section class="chapter" id="investigate">
+  <div class="ch-head split">
+    <div>
+      <div class="ch-no">Section 06 — Investigate</div>
+      <h2 class="ch-title">Follow the<br>intrusion<span class="thin">.</span></h2>
+    </div>
+    <div class="ch-side">One selected host under the microscope: risk trajectory, technique attribution, state vector. Host selection is shared with the <b>Understand</b> and <b>Replay</b> chapters.</div>
+  </div>
+  <div class="inv-stage">
+    <div class="inv-headline">
+      <div class="inv-host mono"><span id="invHostName">dmz-web</span><span class="ip" id="invHostIp">10.0.3.10</span></div>
+      <div class="inv-risk"><div class="n" id="invRisk">0.839</div><span class="lbl">Observed risk</span></div>
+    </div>
+    <div class="inv-grid">
+      <div class="inv-chart" id="invChart"></div>
+      <div class="inv-side">
+        <div class="blk">
+          <div class="blk-title"><span class="lbl">Technique attribution</span><span class="lbl">input × gradient</span></div>
+          <div class="kv-list" id="attrList"></div>
+        </div>
+        <div class="blk">
+          <div class="blk-title"><span class="lbl">Host state</span><span class="lbl mono" id="invStageLbl">STAGE</span></div>
+          <div class="kv-list" id="invHostKv"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 07 SIMULATE ================= -->
+<section class="chapter" id="simulate">
+  <div class="ch-head split">
+    <div>
+      <div class="ch-no">Section 07 — What If</div>
+      <h2 class="ch-title">Simulate a response<br>without touching production<span class="thin">.</span></h2>
+    </div>
+    <div class="ch-side">FluxShield is <b>passive by design</b>. Containment actions exist here as forecasts of network consequence — computed, displayed, never executed.</div>
+  </div>
+  <div class="sim-stage">
+    <div class="sim-actions" id="simActions"></div>
+    <div class="sim-compare">
+      <div class="sim-panel">
+        <div class="ttl"><span class="nm">Current network</span><span class="lbl">AS OBSERVED</span></div>
+        <div class="risk">0.739<small>observed</small></div>
+        <div class="sim-delta"><span>ATTACK PATH INTACT</span><span>·</span><span>2 HOSTS EXPOSED DOWNSTREAM</span></div>
+        <div class="sim-facts kv-list" id="curFacts"></div>
+      </div>
+      <div class="sim-panel future">
+        <div class="ttl"><span class="nm" id="simName">Projected future — Block Source</span><span class="lbl">SIMULATED</span></div>
+        <div class="risk" id="simRisk">0.094<small>projected peak</small></div>
+        <div class="sim-delta" id="simDelta"></div>
+        <div class="sim-facts kv-list" id="simFacts"></div>
+      </div>
+    </div>
+    <div class="sim-banner">
+      <span class="b1">Simulation only</span>
+      <span class="b2">No production network change · no inject · no TCP RST · mitigation API disabled in NO-TOUCH mode</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 08 REPLAY ================= -->
+<section class="chapter" id="replay">
+  <div class="ch-head split">
+    <div>
+      <div class="ch-no">Section 08 — Replay</div>
+      <h2 class="ch-title">Forensic timeline<span class="thin">.</span></h2>
+    </div>
+    <div class="ch-side">Navigate the capture window by window. <b>Drag the timeline</b> or use ← → and space. The side panel shows the network state at the playhead.</div>
+  </div>
+  <div class="rep-stage">
+    <div class="rep-clocks">
+      <div class="rep-clock-main" id="repClock">1:20<span class="frac">.0</span></div>
+      <div class="rep-stat"><span class="lbl">Window</span><span class="v" id="repWin">W 041 / 090</span></div>
+      <div class="rep-stat"><span class="lbl">Model risk</span><span class="v red" id="repRisk">0.641</span></div>
+      <div class="rep-stat"><span class="lbl">Stage</span><span class="v" id="repStage">C2</span></div>
+      <div class="rep-stat"><span class="lbl">Flagged</span><span class="v red">11</span></div>
+      <div class="rep-stat"><span class="lbl">Capture peak</span><span class="v amber">0.775</span></div>
+    </div>
+    <div class="rep-controls" id="repControls"></div>
+    <div class="rep-timeline" id="repTimeline"></div>
+    <div class="rep-bottom">
+      <div class="rep-flows">
+        <div class="rf-head">
+          <span class="w" id="rfTitle">W 041 · 1:18.0 – 1:20.0</span>
+          <span class="d" id="rfMeta">58 records · 4 shown · risk 0.641 · C2</span>
+        </div>
+        <table class="flow-table">
+          <thead><tr><th>t</th><th>flow</th><th>source</th><th>destination</th><th>proto</th><th>flags</th><th style="text-align:right">pkts</th><th style="text-align:right">bytes</th><th style="text-align:right">risk</th><th>verdict</th></tr></thead>
+          <tbody id="rfBody"></tbody>
+        </table>
+      </div>
+      <div class="rep-side">
+        <div class="blk">
+          <div class="blk-title"><span class="lbl">Network state at playhead</span><span class="lbl" id="rpTargetLbl">TARGET</span></div>
+          <div class="rs-risk" id="rpRisk" style="color:var(--red)">0.641</div>
+          <div class="kv-list" id="rpKv" style="margin-top:14px"></div>
+        </div>
+        <div class="blk">
+          <div class="blk-title"><span class="lbl">Rollout +2 → +10 s</span><span class="lbl">hatched = future</span></div>
+          <div class="lattice" id="rpLattice"></div>
+          <div class="kv-list" id="rpRollKv" style="margin-top:14px"></div>
+        </div>
+      </div>
+      <div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 09 INCIDENTS ================= -->
+<section class="chapter" id="incidents">
+  <div class="ch-head split">
+    <div>
+      <div class="ch-no">Section 09 — Incidents</div>
+      <h2 class="ch-title">Incident index<span class="thin">.</span></h2>
+    </div>
+    <div class="ch-side">This shift: <b>2 open</b> · median containment 8m 0s · mean lead time <b class="mono">9.2 s</b> ahead of milestone.</div>
+  </div>
+  <div class="inc-stage">
+    <div class="inc-index" id="incIndex"></div>
+    <div class="inc-detail" id="incDetail"></div>
+  </div>
+</section>
+
+<!-- ================= 10 MODEL ================= -->
+<section class="chapter" id="model">
+  <div class="ch-head split">
+    <div>
+      <div class="ch-no">Section 10 — Model</div>
+      <h2 class="ch-title">The detector,<br>in full<span class="thin">.</span></h2>
+    </div>
+    <div class="ch-side">Every number below is measured on <b>capture-disjoint evaluation</b> with attack families held out — the same protocol used for every figure in this interface.</div>
+  </div>
+  <div class="model-stage">
+    <div class="model-head">
+      <div>
+        <table class="spec-table">
+          <tr><td class="k">Model</td><td class="v">ExtraTrees · 300 trees</td></tr>
+          <tr><td class="k">Feature space</td><td class="v">66 behavioral features</td></tr>
+          <tr><td class="k">Calibration</td><td class="v">Sigmoid (Platt)</td></tr>
+          <tr><td class="k">Operating threshold</td><td class="v">0.50</td></tr>
+          <tr><td class="k">Window</td><td class="v">2.0 s flow windows</td></tr>
+          <tr><td class="k">Evaluation</td><td class="v mint">Capture-disjoint · attack-family holdout</td></tr>
+        </table>
+      </div>
+      <div class="final-grid">
+        <div class="fg"><div class="k lbl">Recall</div><div class="v">99.7849<small>%</small></div></div>
+        <div class="fg"><div class="k lbl">Precision</div><div class="v">99.9998<small>%</small></div></div>
+        <div class="fg"><div class="k lbl">F1</div><div class="v">99.8922<small>%</small></div></div>
+        <div class="fg"><div class="k lbl">FPR</div><div class="v">0.018<small>%</small></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="footer">
+  <div class="f1"><b>FluxShield</b> — passive one-way threat intelligence</div>
+  <div class="f1">Sensor <b style="color:var(--mint)">RUNNING</b> · Inference <b style="color:var(--mint)">LIVE</b> · NO-TOUCH <b>ACTIVE</b></div>
+  <div class="f1">Uptime <b id="uptime">00:00:00</b></div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   FluxShield — application
+   ============================================================ */
+(function(){
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+var MONO = "'IBM Plex Mono', monospace";
+
+/* ---------- palette ---------- */
+var C = { bg:'#081820', panel:'#0B2023', ink:'#E8EFEB', mut:'#8FA6A0', dim:'#5A7370', faint:'#33504E',
+  line:'rgba(64,170,135,.14)', line2:'rgba(64,170,135,.30)', hair:'rgba(232,235,235,.08)',
+  teal:'#287F72', mint:'#40AA87', deep:'#174844', amber:'#D2A548', red:'#D75555' };
+
+/* ---------- data ---------- */
+function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; var t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+var rnd = mulberry32(42);
+var WINDOWS = [];
+for (var i=0;i<90;i++){
+  var ph;
+  if (i<=14) ph = .30+(i/14)*.42;
+  else if (i<=38) ph = .72+rnd()*.10;
+  else if (i<=52) ph = .72-((i-38)/14)*.55;
+  else if (i<=64) ph = .16+rnd()*.05;
+  else if (i<=78) ph = .30+((i-64)/14)*.38+rnd()*.06;
+  else ph = .68-((i-78)/11)*.45+rnd()*.04;
+  var risk = Math.max(.03,Math.min(.95,ph));
+  var stage = i<8?'RECON':i<30?'INITIAL ACCESS':i<38?'EXECUTION':i<44?'C2':i<56?'LATERAL':i<70?'EXFIL':'CLEAR';
+  WINDOWS.push({ i:i, risk:risk, peak:Math.min(.98,risk+.10+rnd()*.12), pps:Math.round(900+risk*5200+rnd()*700),
+    alert:risk>=.65, stage:stage,
+    tech:i<8?'T1046':i<30?'T1190':i<38?'T1059':i<44?'T1071':i<56?'T1021':i<70?'T1041':'—',
+    target:i<30?'dmz-web · 10.0.3.10':i<44?'dmz-web':i<56?'srv-app':i<70?'srv-db':'—' });
+}
+var HOSTS = [
+  { id:'ext-src', ip:'192.168.100.7', zone:'External', risk:.902, cls:'hot', tech:'T1110 · brute force source', flows:1210 },
+  { id:'dmz-web', ip:'10.0.3.10', zone:'DMZ', risk:.839, cls:'hot', tech:'T1190 exploit target', flows:412 },
+  { id:'srv-app', ip:'10.0.2.40', zone:'Application', risk:.611, cls:'warm', tech:'T1021 · lateral', flows:188 },
+  { id:'srv-db', ip:'10.0.2.50', zone:'Database', risk:.567, cls:'warm', tech:'T1021 · T1041 exfil risk', flows:96 },
+  { id:'srv-id', ip:'10.0.2.20', zone:'Application', risk:.234, cls:'cool', tech:'credential reuse (branch B)', flows:74 },
+  { id:'plc-01', ip:'10.0.20.11', zone:'Critical', risk:.021, cls:'cool', tech:'nominal', flows:8 }
+];
+var BRANCHES = [
+  { id:'A', p:66, tid:'T1190', desc:'Exploit the public-facing application', eta:'+6 s', asset:'dmz-web', color:'red' },
+  { id:'B', p:23, tid:'T1110', desc:'Reuse harvested credentials on the VPN', eta:'+12 s', asset:'srv-id', color:'amber' },
+  { id:'C', p:10, tid:'—', desc:'Account lockout ends the attempt', eta:'+8 s', asset:'external', color:'dim' }
+];
+var INCIDENTS = [
+  { id:'INC-0142', sev:'CRITICAL', cls:'crit', tid:'T1498', tech:'Network Denial of Service', target:'dmz-web · 10.0.3.10', peak:.94, lead:3.0, dur:'open · 34s', analyst:'a.rao', status:'TRIAGING',
+    note:'Volumetric burst against the public-facing application. Model risk crossed threshold 3.0 s before the first observable milestone.', path:['ext-src','dmz-web','srv-app'] },
+  { id:'INC-0141', sev:'WARNING', cls:'', tid:'T1046', tech:'Network Service Discovery', target:'srv-db · 10.0.2.50', peak:.712, lead:9.7, dur:'contained · 41s', analyst:'s.khan', status:'CONTAINED',
+    note:'Sequential port sweep from the DMZ toward the database segment. Contained by upstream rule at the boundary (simulated).', path:['ext-src','dmz-web','srv-db'] },
+  { id:'INC-0138', sev:'CLOSED', cls:'ok', tid:'T1071.001', tech:'Web Protocols (C2)', target:'ws-eng-02 · 10.0.10.22', peak:.781, lead:12.1, dur:'closed · 2m', analyst:'n.iyer', status:'CLOSED',
+    note:'Beaconing pattern over web protocols. Attribution: H_emb features dominated the score.', path:['ext-src','dmz-web','ws-eng-02'] },
+  { id:'INC-0140', sev:'CLOSED', cls:'ok', tid:'T1110', tech:'Brute Force', target:'srv-file · 10.0.2.30', peak:.694, lead:8.9, dur:'closed · 1m', analyst:'a.rao', status:'CLOSED',
+    note:'Credential spraying from a single external source. Account lockout policy ended the attempt.', path:['ext-src','srv-file'] }
+];
+var ML = { early:[{t:1,r:68.16},{t:3,r:99.79},{t:5,r:99.79}], trackB:97.40 };
+
+var S = { host:'dmz-web', branch:'A', inc:'INC-0142', replay:{ t:40, playing:false, speed:2 }, uptime:4*3600+10*60+22 };
+
+/* ---------- helpers ---------- */
+function el(tag, attrs, parent){ var e=document.createElementNS('http://www.w3.org/2000/svg',tag); if(attrs) for(var k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e; }
+function div(cls,html){ var d=document.createElement('div'); if(cls) d.className=cls; if(html!=null) d.innerHTML=html; return d; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(n,d){ return Number(n).toFixed(d==null?3:d); }
+function riskColor(r){ return r>=.65?C.red : r>=.45?C.amber : C.mint; }
+function pad2(n){ return (n<10?'0':'')+n; }
+function relClock(sec){ sec=Math.max(0,sec); var m=Math.floor(sec/60), s=Math.floor(sec%60), f=Math.floor((sec%1)*10); return m+':'+pad2(s)+'.'+f; }
+function toast(title,msg,kind){ var t=div('toast-item'+(kind?' '+kind:''),'<span class="tt">'+esc(title)+'</span> — '+esc(msg)); $('toast').appendChild(t); setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .4s'; },3600); setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); },4100); }
+
+/* ============================================================
+   NETWORK FIELD RENDERER (canvas, shared by hero + observe)
+   ============================================================ */
+function makeField(canvas, opts){
+  opts = opts || {};
+  var ctx = canvas.getContext('2d');
+  var W=0,H=0,dpr=Math.min(2,window.devicePixelRatio||1);
+  /* topology: zones left→right, hosts within */
+  var ZONES = [
+    { nm:'EXTERNAL', x:.055, hosts:[ {id:'internet',y:.24,cls:'n'}, {id:'ext-src',y:.62,cls:'hot'} ] },
+    { nm:'SENSOR · ONE-WAY', x:.24, hosts:[ {id:'tap',y:.42,cls:'tap'} ] },
+    { nm:'DMZ', x:.40, hosts:[ {id:'dmz-web',y:.34,cls:'hot'}, {id:'dmz-vpn',y:.66,cls:'n'}, {id:'dmz-mail',y:.84,cls:'n'} ] },
+    { nm:'APPLICATION', x:.60, hosts:[ {id:'srv-app',y:.28,cls:'warm'}, {id:'srv-id',y:.52,cls:'cool'}, {id:'srv-file',y:.76,cls:'n'} ] },
+    { nm:'DATABASE', x:.775, hosts:[ {id:'srv-db',y:.40,cls:'warm'}, {id:'srv-db2',y:.68,cls:'n'} ] },
+    { nm:'CRITICAL', x:.93, hosts:[ {id:'plc-01',y:.52,cls:'crit'} ] }
+  ];
+  var LINKS = [
+    ['internet','tap','tap'], ['ext-src','tap','tap'], ['tap','dmz-web','tap'], ['tap','dmz-vpn','tap'], ['tap','dmz-mail','tap'],
+    ['ext-src','dmz-web','hot'], ['dmz-web','srv-app','warm'], ['srv-app','srv-db','warm'], ['dmz-web','dmz-vpn','n'],
+    ['dmz-mail','srv-file','n'], ['srv-app','srv-id','n'], ['srv-id','srv-db','n'], ['srv-db','plc-01','n'], ['srv-db2','plc-01','n'], ['srv-file','srv-db','n']
+  ];
+  var packets = [];
+  function spawn(){
+    var lk = LINKS[Math.floor(Math.random()*LINKS.length)];
+    var cls = lk[2];
+    if (cls==='hot' && Math.random()<.85) cls='hot';
+    else if (cls==='warm' && Math.random()<.5) cls='warm';
+    else cls = Math.random()<.9?'n':cls;
+    packets.push({ lk:lk, t:Math.random()*.3, sp:(cls==='hot'? .16 : cls==='warm'? .11 : .07)+Math.random()*.03, cls:cls });
+  }
+  for (var p=0;p<46;p++) spawn();
+  function nodePos(id){
+    for (var z=0;z<ZONES.length;z++){ var hs=ZONES[z].hosts;
+      for (var h=0;h<hs.length;h++) if (hs[h].id===id) return { x:ZONES[z].x, y:hs[h].y }; }
+    return null;
+  }
+  var colMap = { n:'rgba(64,170,135,.55)', warm:'rgba(210,165,72,.85)', hot:'rgba(215,85,85,.9)', tap:'rgba(64,170,135,.45)' };
+  var t0 = performance.now();
+  function resize(){
+    var r = canvas.getBoundingClientRect();
+    W = r.width; H = r.height;
+    canvas.width = W*dpr; canvas.height = H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function draw(now){
+    var t = (now - t0)/1000;
+    ctx.clearRect(0,0,W,H);
+    var px = opts.padX||70, py = opts.padY||54;
+    var gw = W-px*2, gh = H-py*2;
+    function P(n){ var p=nodePos(n); return { x:px+p.x*gw, y:py+p.y*gh }; }
+    /* zone rails + labels */
+    ctx.font = '9px '+MONO; ctx.textAlign='center';
+    ZONES.forEach(function(z){
+      var x = px+z.x*gw;
+      ctx.strokeStyle = 'rgba(64,170,135,.08)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(x,py-18); ctx.lineTo(x,H-py+6); ctx.stroke();
+      ctx.fillStyle = 'rgba(90,115,112,.9)';
+      ctx.fillText(z.nm, x, py-28);
+    });
+    /* links */
+    LINKS.forEach(function(lk){
+      var a=P(lk[0]), b=P(lk[1]);
+      var col = lk[2]==='hot'? 'rgba(215,85,85,.5)' : lk[2]==='warm'? 'rgba(210,165,72,.4)' : lk[2]==='tap'? 'rgba(64,170,135,.22)' : 'rgba(64,170,135,.18)';
+      ctx.strokeStyle=col; ctx.lineWidth = lk[2]==='hot'?1.6:1;
+      if (lk[2]==='tap') ctx.setLineDash([2,4]); else ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.setLineDash([]);
+    });
+    /* packets */
+    packets.forEach(function(pk){
+      pk.t += pk.sp/60;
+      if (pk.t>=1){ pk.t=0; var lk2=LINKS[Math.floor(Math.random()*LINKS.length)]; pk.lk=lk2; pk.t=0;
+        var cls2 = lk2[2]==='hot'? (Math.random()<.85?'hot':'n') : lk2[2]==='warm'? (Math.random()<.5?'warm':'n') : (Math.random()<.08?'warm':'n');
+        pk.cls=cls2; pk.sp=(cls2==='hot'? .16 : cls2==='warm'? .11 : .07)+Math.random()*.03; }
+      var a=P(pk.lk[0]), b=P(pk.lk[1]);
+      var x=a.x+(b.x-a.x)*pk.t, y=a.y+(b.y-a.y)*pk.t;
+      ctx.fillStyle = colMap[pk.cls]||colMap.n;
+      var s = pk.cls==='hot'?2.2:1.5;
+      ctx.fillRect(x-s/2,y-s/2,s,s);
+    });
+    /* nodes */
+    ZONES.forEach(function(z){ z.hosts.forEach(function(h){
+      var p=P(h.id);
+      var col = h.cls==='hot'? C.red : h.cls==='warm'? C.amber : h.cls==='crit'? C.red : h.cls==='tap'? C.teal : C.teal;
+      var pulse = (h.cls==='hot'||h.cls==='crit')? (Math.sin(t*2.2+ p.y*9)*.5+.5)*.5+.5 : 1;
+      ctx.strokeStyle = col; ctx.globalAlpha = .9;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(p.x-4.5,p.y-4.5,9,9);
+      ctx.fillStyle = col; ctx.globalAlpha = (h.cls==='hot'?.85:.7)*pulse;
+      ctx.fillRect(p.x-2.5,p.y-2.5,5,5);
+      ctx.globalAlpha = 1;
+      ctx.font='8.5px '+MONO; ctx.textAlign='center';
+      ctx.fillStyle = h.cls==='hot'? C.red : h.cls==='warm'? C.amber : 'rgba(143,166,160,.85)';
+      ctx.fillText(h.id, p.x, p.y+16);
+      if (h.cls==='hot'){
+        ctx.fillStyle='rgba(215,85,85,.8)';
+        ctx.fillText(fmt(HOSTS.find(function(x){return x.id===h.id;})?HOSTS.find(function(x){return x.id===h.id;}).risk:.8), p.x, p.y+27);
+      }
+    }); });
+    /* top-left hud */
+    if (!opts.quiet){
+      ctx.textAlign='left'; ctx.font='9px '+MONO; ctx.fillStyle='rgba(64,170,135,.5)';
+      var active = packets.filter(function(p){return p.cls==='hot';}).length;
+      ctx.fillText('THREAT FLOWS '+String(active).padStart(2,'0'), px, H-py+22);
+      ctx.textAlign='right';
+      ctx.fillText('T+'+Math.floor(t)+'s', W-px, H-py+22);
+    }
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', function(){ resize(); });
+  resize();
+  requestAnimationFrame(draw);
+}
+makeField($('field'));
+makeField($('field2'), { padX:56, padY:64 });
+
+/* ============================================================
+   SVG CHART HELPERS
+   ============================================================ */
+function seriesChart(cfg){
+  var w=cfg.w||900, h=cfg.h||240;
+  var mL=44,mR=14,mT=14,mB=cfg.xLabels?24:10;
+  var iw=w-mL-mR, ih=h-mT-mB;
+  var svg = el('svg',{viewBox:'0 0 '+w+' '+h});
+  var yMax = cfg.yMax||1;
+  var obs = cfg.obs, fore = cfg.fore||[], band = cfg.band||[];
+  var n = obs.length, total = n + (cfg.foreAppend||0);
+  function X(i){ return mL+(i/(total-1))*iw; }
+  function Y(v){ return mT+(1-v/yMax)*ih; }
+  [0,.25,.5,.75,1].forEach(function(v){
+    el('line',{x1:mL,x2:w-mR,y1:Y(v*yMax),y2:Y(v*yMax),stroke: v===0?'rgba(232,239,235,.10)':'rgba(232,239,235,.045)','stroke-width':1},svg);
+    var t=el('text',{x:mL-7,y:Y(v*yMax)+3,'text-anchor':'end','font-size':8.5,fill:C.faint,'font-family':'IBM Plex Mono, monospace'},svg);
+    t.textContent = v;
+  });
+  if (cfg.threshold!=null){
+    var ty=Y(cfg.threshold);
+    el('line',{x1:mL,x2:w-mR,y1:ty,y2:ty,stroke:C.red,'stroke-width':1,'stroke-dasharray':'4 4',opacity:.7},svg);
+    var tt=el('text',{x:mL+6,y:ty-5,'font-size':8.5,fill:'rgba(215,85,85,.8)','font-family':'IBM Plex Mono, monospace'},svg);
+    tt.textContent='THRESHOLD '+fmt(cfg.threshold,2);
+  }
+  function pathOf(arr,from){ var d=''; for(var i=from||0;i<arr.length;i++) d+=(d===''?'M':'L')+X(i)+','+Y(arr[i]); return d; }
+  /* band */
+  if (band.length && cfg.foreAppend){
+    var bd='';
+    for (var b2=0;b2<band.length;b2++) bd+=(b2===0?'M':'L')+X(n+b2)+','+Y(band[b2][1]);
+    for (var b3=band.length-1;b3>=0;b3--) bd+=' L'+X(n+b3)+','+Y(band[b3][0]);
+    bd+=' L'+X(n)+','+Y(obs[n-1]);
+    el('path',{d:bd,fill:'rgba(64,170,135,.10)',stroke:'none'},svg);
+  }
+  /* observed area */
+  el('path',{ d:pathOf(obs)+' L'+X(n-1)+','+Y(0)+' L'+X(0)+','+Y(0)+' Z', fill:'rgba(64,170,135,.06)', stroke:'none' },svg);
+  el('path',{ d:pathOf(obs), fill:'none', stroke:'#cfc6a0', 'stroke-width':1.6 },svg);
+  /* other branches (gray, dim) */
+  (cfg.alt||[]).forEach(function(a){ el('path',{ d:pathOf(a,n-1), fill:'none', stroke:'rgba(143,166,160,.35)', 'stroke-width':1, 'stroke-dasharray':'2 4' },svg); });
+  /* selected forecast */
+  if (fore.length){
+    el('path',{ d:'M'+X(n-1)+','+Y(obs[n-1])+' '+pathOf(fore).replace(/^M/,''), fill:'none', stroke:cfg.cFore||C.mint, 'stroke-width':1.6 },svg);
+  }
+  /* now divider */
+  if (cfg.nowIndex!=null){
+    el('line',{x1:X(cfg.nowIndex),x2:X(cfg.nowIndex),y1:mT,y2:mT+ih,stroke:'rgba(232,239,235,.4)','stroke-width':1},svg);
+    var nl=el('text',{x:X(cfg.nowIndex)-5,y:mT+9,'text-anchor':'end','font-size':8.5,fill:'rgba(232,239,235,.55)','font-family':'IBM Plex Mono, monospace'},svg);
+    nl.textContent='NOW';
+  }
+  /* x labels */
+  if (cfg.xLabels) cfg.xLabels.forEach(function(lb){
+    var t=el('text',{x:X(lb.i),y:h-6,'text-anchor':lb.a||'middle','font-size':8.5,fill:C.faint,'font-family':'IBM Plex Mono, monospace'},svg);
+    t.textContent=lb.t;
+  });
+  return svg;
+}
+
+/* ============================================================
+   DETECT: signature sparks + gauge + tape
+   ============================================================ */
+['sig1','sig2','sig3','sig4','sig5'].forEach(function(id,k){
+  var box=$(id), r=mulberry32(7+k);
+  for (var i=0;i<16;i++){ var b=document.createElement('i'); b.style.height=(8+Math.round(r()*80))+'%'; if(r()>.8)b.className='hi'; box.appendChild(b); }
+});
+$('dgfill').style.width = '73.9%';
+$('tapeRows').innerHTML = WINDOWS.slice(-6).reverse().map(function(w){
+  var cls = w.risk>=.65?'hot':w.risk>=.45?'warm':'';
+  return '<div class="trow '+cls+'"><span class="id">W '+pad2(w.i+1)+'</span><span class="bar"><i style="width:'+(w.risk*100)+'%"></i></span><span class="sc">'+fmt(w.risk)+'</span><span class="vd">'+(w.risk>=.5?'ATTACK':'BENIGN')+'</span></div>';
+}).join('');
+
+/* ============================================================
+   UNDERSTAND: attack path stage + evidence
+   ============================================================ */
+var PATHSTAGE = $('pathstage');
+(function(){
+  var W=980,H=460;
+  var svg = el('svg',{viewBox:'0 0 '+W+' '+H, preserveAspectRatio:'xMidYMid slice'});
+  PATHSTAGE.insertBefore(svg, PATHSTAGE.firstChild);
+  var pos = { 'ext-src':{x:110,y:250}, 'dmz-web':{x:330,y:170}, 'srv-app':{x:560,y:120}, 'srv-db':{x:790,y:210}, 'srv-id':{x:560,y:330}, 'plc-01':{x:840,y:360} };
+  var chains = [
+    ['ext-src','dmz-web','hot','T1110 · brute force'],
+    ['dmz-web','srv-app','warm','T1021 · lateral · c=0.73'],
+    ['srv-app','srv-db','warm','T1041 · exfil risk · 54.4 KB'],
+    ['dmz-web','srv-id','dim','branch B · cred reuse'],
+    ['srv-db','plc-01','dim','bounded']
+  ];
+  chains.forEach(function(ch){
+    var a=pos[ch[0]], b=pos[ch[1]];
+    var col = ch[2]==='hot'?C.red : ch[2]==='warm'?C.amber : 'rgba(143,166,160,.3)';
+    el('path',{ d:'M'+a.x+','+a.y+' C'+(a.x+120)+','+(a.y-30)+' '+(b.x-120)+','+(b.y+30)+' '+b.x+','+b.y,
+      fill:'none', stroke:col, 'stroke-width': ch[2]==='hot'?2:1.2, 'stroke-dasharray': ch[2]==='dim'?'2 5':'7 5', opacity: ch[2]==='dim'?.6:.9 },svg);
+    if (ch[3]){
+      var mx=(a.x+b.x)/2, my=(a.y+b.y)/2-14;
+      var t=el('text',{x:mx,y:my,'text-anchor':'middle','font-size':8.5,fill: ch[2]==='hot'?'rgba(215,85,85,.85)': ch[2]==='warm'?'rgba(210,165,72,.8)':C.faint,'font-family':'IBM Plex Mono, monospace'},svg);
+      t.textContent=ch[3];
+    }
+  });
+  Object.keys(pos).forEach(function(id){
+    el('circle',{cx:pos[id].x,cy:pos[id].y,r:26,fill:'transparent'},svg);
+  });
+})();
+var hopNodes = {};
+HOSTS.forEach(function(h){
+  var coords = { 'ext-src':[110,250], 'dmz-web':[330,170], 'srv-app':[560,120], 'srv-db':[790,210], 'srv-id':[560,330], 'plc-01':[840,360] }[h.id];
+  var d = div('hop '+(h.cls==='hot'?'hot':h.cls==='warm'?'warm':'cool')+(S.host===h.id?' sel':''));
+  d.style.left = coords[0]+'px'; d.style.top = coords[1]+'px';
+  d.innerHTML = '<div class="k"><span class="kk lbl" style="color:'+(h.cls==='hot'?C.red:h.cls==='warm'?C.amber:C.dim)+'">'+h.zone.toUpperCase()+'</span></div>'+
+    '<div class="nm">'+h.id+'</div><div class="ip">'+h.ip+'</div>'+
+    '<div class="rk" style="color:'+riskColor(h.risk)+'">RISK '+fmt(h.risk,2)+'</div>';
+  d.onclick = function(){ selectHost(h.id); };
+  PATHSTAGE.appendChild(d);
+  hopNodes[h.id]=d;
+});
+function evRowsFor(h){
+  var r = mulberry32(h.id.length*997+Math.floor(h.risk*100));
+  var rows=[];
+  var n = h.risk>=.6?4:3;
+  for (var i=0;i<n;i++){
+    var mal = h.risk>=.5 && i<2;
+    rows.push({ fid:'8F'+(42+i)+pad2(Math.floor(r()*90)), ts:relClock(78+i*0.4),
+      src: mal?'10.24.7.12':'10.24.'+(1+Math.floor(r()*4))+'.'+(10+Math.floor(r()*200)),
+      dst: h.ip, proto: r()>.4?'TCP':'UDP', bytes:(r()*90+2).toFixed(1)+' KB',
+      risk: mal? .72+r()*.24 : .05+r()*.2 });
+  }
+  return rows;
+}
+function renderEvidence(){
+  var h = HOSTS.find(function(x){return x.id===S.host;});
+  $('evCount').textContent = (h.risk>=.6?'4':'3')+' of '+h.flows+' flows';
+  $('evRows').innerHTML = evRowsFor(h).map(function(f){
+    var c = f.risk>=.65?C.red:f.risk>=.45?C.amber:C.mint;
+    return '<div class="ev-row"><span class="fid">'+f.ts+'<br><span style="color:'+C.faint+'">#'+f.fid+'</span></span>'+
+      '<span class="route"><b>'+f.src+'</b> → <b>'+f.dst+'</b> · '+f.proto+' · '+f.bytes+'</span>'+
+      '<span class="rs" style="color:'+c+'">'+fmt(f.risk,2)+'</span></div>';
+  }).join('');
+  $('hostMeta').innerHTML =
+    '<div class="fm"><div class="k lbl">Host</div><div class="v">'+h.id+'</div></div>'+
+    '<div class="fm"><div class="k lbl">Zone</div><div class="v">'+h.zone.toUpperCase()+'</div></div>'+
+    '<div class="fm"><div class="k lbl">Risk</div><div class="v" style="color:'+riskColor(h.risk)+'">'+fmt(h.risk)+'</div></div>'+
+    '<div class="fm"><div class="k lbl">Technique</div><div class="v">'+esc(h.tech)+'</div></div>';
+}
+function selectHost(id){
+  S.host=id;
+  Object.keys(hopNodes).forEach(function(k){ hopNodes[k].classList.toggle('sel', k===id); });
+  var h = HOSTS.find(function(x){return x.id===id;});
+  renderEvidence();
+  /* investigate sync */
+  $('invHostName').textContent = h.id;
+  $('invHostIp').textContent = h.ip;
+  $('invRisk').textContent = fmt(h.risk);
+  $('invRisk').style.color = riskColor(h.risk);
+  renderInvChart();
+  renderInvSide(h);
+  toast('Host selected', h.id+' · '+h.ip+' · risk '+fmt(h.risk));
+}
+
+/* ============================================================
+   FORECAST
+   ============================================================ */
+function branchFutures(b){
+  var target = b.color==='red'? .953 : b.color==='amber'? .655 : .120;
+  var start=.739, f=[], band=[], r=start;
+  var steps=8;
+  for (var i=0;i<steps;i++){
+    var frac=(i+1)/steps;
+    r = start + (target-start)*Math.pow(frac,1.25);
+    r = Math.max(.03,Math.min(.98,r + Math.sin(i*1.9)*.012));
+    f.push(r);
+    band.push([Math.max(.03,r-.14-i*.012), Math.min(1,r+.09+i*.018)]);
+  }
+  return { f:f, band:band, target:target };
+}
+function renderBranchList(){
+  $('branchList').innerHTML = BRANCHES.map(function(b){
+    return '<div class="fc-branch'+(b.color==='red'?' hot':'')+(S.branch===b.id?' sel':'')+'" data-b="'+b.id+'">'+
+      '<span class="bid">'+b.id+'</span>'+
+      '<span class="bi"><span class="bt">'+esc(b.desc)+'</span><span class="bm">'+b.tid+' · '+b.eta+' → '+b.asset+'</span></span>'+
+      '<span class="bp">'+b.p+'%</span></div>';
+  }).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('.fc-branch'),function(n){
+    n.onclick=function(){ S.branch=n.dataset.b; renderBranchList(); renderForecast(); toast('Branch '+S.branch, BRANCHES.find(function(x){return x.id===S.branch;}).desc); };
+  });
+}
+function renderForecast(){
+  var sel = BRANCHES.find(function(b){return b.id===S.branch;});
+  var futures = branchFutures(sel);
+  var alts = BRANCHES.filter(function(b){return b.id!==S.branch;}).map(function(b){ return branchFutures(b).f; });
+  var obs = WINDOWS.slice(-8).map(function(w){return w.risk;});
+  var labels=[{i:0,t:'-16 s'},{i:3,t:'-10 s'},{i:5,t:'-6 s'},{i:7,t:'NOW'},{i:10,t:'+8 s'},{i:15,t:'+16 s',a:'end'}];
+  var svg = seriesChart({ w:1000,h:260, obs:obs, fore:futures.f, band:futures.band, foreAppend:8, alt:alts,
+    threshold:.65, nowIndex:7, xLabels:labels, cFore: sel.color==='red'?C.red: sel.color==='amber'?C.amber:C.mint });
+  var box=$('fcCanvas');
+  box.innerHTML=''; box.appendChild(svg);
+}
+renderBranchList();
+renderForecast();
+
+/* ============================================================
+   INVESTIGATE
+   ============================================================ */
+function renderInvChart(){
+  var h = HOSTS.find(function(x){return x.id===S.host;});
+  var scale = h.risk/.95;
+  var obs = WINDOWS.map(function(w){ return Math.min(.98, w.risk*scale*(0.9+0.1*Math.sin(w.i*.7))); });
+  var target = Math.min(.98,h.risk*1.12);
+  var f=[],band=[];
+  for (var i=0;i<8;i++){
+    var v=h.risk+(target-h.risk)*Math.pow((i+1)/8,1.2);
+    f.push(Math.max(.03,v)); band.push([Math.max(.02,v-.1-i*.01),Math.min(1,v+.07+i*.014)]);
+  }
+  var labels=[{i:0,t:'-3 m'},{i:44,t:'-1 m'},{i:89,t:'NOW'},{i:97,t:'+16 s',a:'end'}];
+  var svg = seriesChart({ w:900,h:250, obs:obs, fore:f, band:band, foreAppend:8, threshold:.65, nowIndex:89, xLabels:labels });
+  var box=$('invChart'); box.innerHTML=''; box.appendChild(svg);
+}
+function renderInvSide(h){
+  var r = mulberry32(h.id.length*313+7);
+  var attrs=[['avg_duration',12.9],['H_emb_0',9.5],['syn_rate',8.7],['H_emb_4',9.6],['fwd_bytes',7.2],['unique_peers',6.4]];
+  $('attrList').innerHTML = attrs.map(function(a){
+    return '<div class="kv"><span class="k">'+a[0]+'</span><span class="v" style="color:'+C.mint+'">'+a[1].toFixed(1)+'%</span></div>';
+  }).join('');
+  $('invStageLbl').textContent = (h.risk>=.6?'ACTIVE INVOLVEMENT':h.risk>=.4?'WATCH':'NOMINAL');
+  $('invHostKv').innerHTML =
+    '<div class="kv"><span class="k">Address</span><span class="v">'+h.ip+'</span></div>'+
+    '<div class="kv"><span class="k">Zone</span><span class="v">'+h.zone.toUpperCase()+'</span></div>'+
+    '<div class="kv"><span class="k">Active flows</span><span class="v">'+h.flows+'</span></div>'+
+    '<div class="kv"><span class="k">Technique</span><span class="v">'+esc(h.tech)+'</span></div>'+
+    '<div class="kv"><span class="k">Risk state</span><span class="v" style="color:'+riskColor(h.risk)+'">'+(h.risk>=.65?'HIGH':h.risk>=.45?'ELEVATED':'GUARDED')+'</span></div>';
+}
+renderInvChart();
+renderInvSide(HOSTS.find(function(x){return x.id===S.host;}));
+renderEvidence();
+
+/* ============================================================
+   SIMULATE
+   ============================================================ */
+var SIMS = {
+  'BLOCK SOURCE': { peak:.094, delta:'-87.3% peak risk', paths:'2 of 2 attack paths severed', hosts:'0 hosts exposed downstream', note:'source dropped at the boundary — upstream of every stage' },
+  'ISOLATE HOST': { peak:.211, delta:'-71.4% peak risk', paths:'1 of 2 attack paths severed', hosts:'1 host exposed downstream', note:'dmz-web unreachable — path severed at the target' },
+  'CUT PATH':    { peak:.348, delta:'-52.9% peak risk', paths:'1 of 2 attack paths severed', hosts:'1 host exposed downstream', note:'lateral path severed — target still exposed externally' }
+};
+var simOrder = ['BLOCK SOURCE','ISOLATE HOST','CUT PATH'];
+function renderSims(){
+  $('simActions').innerHTML = simOrder.map(function(s){
+    return '<button class="sim-btn'+(s===S.sim?' on':'')+'" data-s="'+s+'">'+s+'</button>';
+  }).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('.sim-btn'),function(b){
+    b.onclick=function(){ S.sim=b.dataset.s; renderSims(); applySim(); };
+  });
+  if (!S.sim){ S.sim='BLOCK SOURCE'; Array.prototype.forEach.call(document.querySelectorAll('.sim-btn'),function(b){ if(b.dataset.s==='BLOCK SOURCE') b.classList.add('on'); }); }
+}
+function applySim(){
+  var s = SIMS[S.sim];
+  $('simName').textContent = 'Projected future — '+S.sim.charAt(0)+S.sim.slice(1).toLowerCase();
+  animateNum($('simRisk'), 0.739, s.peak, function(){ return fmt(s.peak); });
+  $('simDelta').innerHTML = '<span class="d">'+s.delta+'</span><span>·</span><span>'+esc(s.note)+'</span>';
+  $('simFacts').innerHTML =
+    '<div class="kv"><span class="k">Attack paths</span><span class="v mint">'+s.paths+'</span></div>'+
+    '<div class="kv"><span class="k">Downstream exposure</span><span class="v mint">'+s.hosts+'</span></div>'+
+    '<div class="kv"><span class="k">Production change</span><span class="v">NONE — SIMULATED</span></div>';
+  toast('Simulation — '+S.sim, s.note+' · peak '+fmt(s.peak));
+}
+function animateNum(node, from, to, render){
+  var t0=performance.now(), dur=500;
+  function step(now){ var p=Math.min(1,(now-t0)/dur); p=1-Math.pow(1-p,3);
+    var v=from+(to-from)*p; node.innerHTML=fmt(v)+'<small>projected peak</small>';
+    if(p<1) requestAnimationFrame(step); }
+  requestAnimationFrame(step);
+}
+$('curFacts').innerHTML =
+  '<div class="kv"><span class="k">Observed risk</span><span class="v red">0.739</span></div>'+
+  '<div class="kv"><span class="k">Forecast peak</span><span class="v amber">0.953</span></div>'+
+  '<div class="kv"><span class="k">Attack paths</span><span class="v">2 ACTIVE</span></div>'+
+  '<div class="kv"><span class="k">Downstream exposure</span><span class="v">srv-app · srv-db</span></div>';
+renderSims();
+$('simRisk').innerHTML = '0.094<small>projected peak</small>';
+$('simDelta').innerHTML = '<span class="d">-87.3% peak risk</span><span>·</span><span>source dropped at the boundary — upstream of every stage</span>';
+$('simFacts').innerHTML =
+  '<div class="kv"><span class="k">Attack paths</span><span class="v mint">2 of 2 attack paths severed</span></div>'+
+  '<div class="kv"><span class="k">Downstream exposure</span><span class="v mint">0 hosts exposed downstream</span></div>'+
+  '<div class="kv"><span class="k">Production change</span><span class="v">NONE — SIMULATED</span></div>';
+
+/* ============================================================
+   REPLAY
+   ============================================================ */
+function renderRepControls(){
+  var c=$('repControls');
+  c.innerHTML='';
+  function btn(txt,fn,on,seg){ var b=document.createElement('button'); b.className='rc'+(on?' on':''); b.textContent=txt; b.onclick=fn; if(seg)b.dataset.seg='1'; c.appendChild(b); return b; }
+  btn('⏮',function(){ S.replay.t=0; renderReplay(); });
+  btn('◀',function(){ S.replay.t=Math.max(0,S.replay.t-1); S.replay.playing=false; renderReplay(); });
+  btn(S.replay.playing?'❚❚':'▶',function(){ S.replay.playing=!S.replay.playing; if(S.replay.playing) startPlay(); renderReplay(); },true);
+  btn('▶',function(){ S.replay.t=Math.min(89,S.replay.t+1); S.replay.playing=false; renderReplay(); });
+  btn('⏭',function(){ S.replay.t=89; renderReplay(); });
+  var seg=div('seg');
+  [1,2,4,8].forEach(function(s){ var b=document.createElement('button'); b.className='rc'+(S.replay.speed===s?' on':''); b.textContent=s+'×'; b.onclick=function(){ S.replay.speed=s; renderRepControls(); }; seg.appendChild(b); });
+  c.appendChild(seg);
+  var st=div('rep-state'+(S.replay.playing?'':' paused'));
+  st.id='repState'; st.textContent=S.replay.playing?'● PLAYING':'● PAUSED';
+  c.appendChild(st);
+}
+function renderRepTimeline(){
+  var box=$('repTimeline'); box.innerHTML='';
+  var w=1150,h=170,mL=44,mR=14,mT=14,mB=10,iw=w-mL-mR,ih=h-mT-mB;
+  var svg=el('svg',{viewBox:'0 0 '+w+' '+h});
+  function X(i){ return mL+(i/89)*iw; }
+  function Y(v){ return mT+(1-v)*ih; }
+  [0,.25,.5,.75,1].forEach(function(v){
+    el('line',{x1:mL,x2:w-mR,y1:Y(v),y2:Y(v),stroke:'rgba(232,239,235,.045)','stroke-width':1},svg);
+  });
+  var ty=Y(.65);
+  el('line',{x1:mL,x2:w-mR,y1:ty,y2:ty,stroke:C.red,'stroke-width':1,'stroke-dasharray':'4 4',opacity:.6},svg);
+  var t1=el('text',{x:mL+6,y:ty-5,'font-size':8.5,fill:'rgba(215,85,85,.7)','font-family':'IBM Plex Mono, monospace'},svg); t1.textContent='THRESHOLD 0.65';
+  /* pps line */
+  var dP=''; WINDOWS.forEach(function(w2,i){ dP+=(dP===''?'M':'L')+X(i)+','+Y(Math.min(1,w2.pps/6500)); });
+  el('path',{d:dP,fill:'none',stroke:'rgba(143,166,160,.4)','stroke-width':1},svg);
+  /* risk line + area */
+  var dR='', dA='';
+  WINDOWS.forEach(function(w2,i){ dR+=(dR===''?'M':'L')+X(i)+','+Y(w2.risk); });
+  dA=dR+' L'+X(89)+','+Y(0)+' L'+X(0)+','+Y(0)+' Z';
+  el('path',{d:dA,fill:'rgba(64,170,135,.06)'},svg);
+  el('path',{d:dR,fill:'none',stroke:'#cfc6a0','stroke-width':1.4},svg);
+  /* alert ticks */
+  WINDOWS.forEach(function(w2,i){ if(w2.alert) el('rect',{x:X(i)-1,y:mT,width:2,height:6,fill:C.red},svg); });
+  /* playhead */
+  var ph=S.replay.t;
+  el('line',{x1:X(ph),x2:X(ph),y1:mT-6,y2:mT+ih,stroke:C.ink,'stroke-width':1.2},svg);
+  el('rect',{x:X(ph)-3,y:mT-10,width:6,height:5,fill:C.ink},svg);
+  /* labels */
+  [0,18,36,54,72,89].forEach(function(i){
+    var t=el('text',{x:X(i),y:h-2,'text-anchor':'middle','font-size':8.5,fill:C.faint,'font-family':'IBM Plex Mono, monospace'},svg);
+    t.textContent=relClock(i*2);
+  });
+  box.appendChild(svg);
+  svg.addEventListener('click',function(ev){
+    var r=svg.getBoundingClientRect();
+    var frac=(ev.clientX-r.left)/r.width;
+    S.replay.t=Math.max(0,Math.min(89,Math.round(frac*89)));
+    S.replay.playing=false; renderReplay();
+  });
+}
+function flowsFor(wi){
+  var w2=WINDOWS[wi], r=mulberry32(wi*7919+13), out=[], n=w2.alert?6:4;
+  for (var i=0;i<n;i++){
+    var mal=w2.alert&&i<3;
+    var risk=mal?.72+r()*.25:.05+r()*.18;
+    out.push({ t:relClock((wi-1)*2+r()*2), fid:'8F'+(40+Math.floor(r()*55))+pad2(Math.floor(r()*99)),
+      src: mal?'10.24.7.12':'10.24.'+(1+Math.floor(r()*4))+'.'+(10+Math.floor(r()*200)),
+      dst: mal?'10.24.3.44':['10.24.2.20','10.24.3.44','10.24.2.50','10.24.10.53'][Math.floor(r()*4)],
+      proto:r()>.4?'TCP':'UDP', flags:mal?(r()>.5?'AP':'SAPF'):'AP',
+      pkts:(mal?300+Math.floor(r()*900):20+Math.floor(r()*160)),
+      bytes:mal?(2+r()*20).toFixed(1)+'k':(1+r()*40).toFixed(1)+'k',
+      risk:risk, path:mal });
+  }
+  out.sort(function(a,b){return a.t.localeCompare(b.t);});
+  return out;
+}
+function renderReplay(){
+  var w2=WINDOWS[S.replay.t];
+  $('repClock').innerHTML = relClock(S.replay.t*2).replace(/\.(\d)$/,'<span class="frac">.$1</span>');
+  $('repWin').textContent='W '+pad2(S.replay.t+1)+' / 090';
+  $('repRisk').textContent=fmt(w2.risk); $('repRisk').style.color=riskColor(w2.risk);
+  $('repStage').textContent=w2.stage; $('repStage').style.color=w2.alert?C.red:w2.risk>=.45?C.amber:C.ink;
+  $('rfTitle').textContent='W '+pad2(S.replay.t+1)+' · '+relClock(Math.max(0,(S.replay.t-1)*2))+' – '+relClock(S.replay.t*2);
+  $('rfMeta').textContent=(w2.alert?'4 on attack path · ':'')+'58 records · risk '+fmt(w2.risk)+' · '+w2.stage+' · '+w2.tech;
+  $('rfBody').innerHTML=flowsFor(S.replay.t).map(function(f){
+    var c=f.risk>=.65?C.red:f.risk>=.45?C.amber:C.mint;
+    return '<tr class="'+(f.path?'onpath':'')+'"><td>'+f.t+'</td><td style="color:'+C.faint+'">#'+f.fid+'</td>'+
+      '<td>'+f.src+'</td><td>→ '+f.dst+'</td><td>'+f.proto+'</td><td>'+f.flags+'</td>'+
+      '<td class="num">'+f.pkts+'</td><td class="num">'+f.bytes+'</td>'+
+      '<td class="num" style="color:'+c+'">'+fmt(f.risk,2)+'</td>'+
+      '<td style="color:'+c+';letter-spacing:.14em">'+(f.risk>=.65?'ATTACK':f.risk>=.45?'SUSPECT':'BENIGN')+'</td></tr>';
+  }).join('');
+  $('rpRisk').textContent=fmt(w2.risk); $('rpRisk').style.color=riskColor(w2.risk);
+  $('rpTargetLbl').textContent='TARGET · '+(w2.target||'—');
+  $('rpKv').innerHTML =
+    '<div class="kv"><span class="k">Stage</span><span class="v">'+w2.stage+'</span></div>'+
+    '<div class="kv"><span class="k">Technique</span><span class="v">'+w2.tech+'</span></div>'+
+    '<div class="kv"><span class="k">Throughput</span><span class="v">'+(w2.pps/1000).toFixed(1)+'k pkt/s</span></div>'+
+    '<div class="kv"><span class="k">Verdict</span><span class="v" style="color:'+riskColor(w2.risk)+'">'+(w2.risk>=.5?'ATTACK':'BENIGN')+'</span></div>';
+  var lat=$('rpLattice'); lat.innerHTML='';
+  for (var i=0;i<8;i++){ var b=document.createElement('i'); if(w2.alert&&i===3)b.className='hot'; lat.appendChild(b); }
+  $('rpRollKv').innerHTML =
+    '<div class="kv"><span class="k">Rollout peak</span><span class="v" style="color:'+riskColor(w2.peak)+'">'+fmt(w2.peak)+'</span></div>'+
+    '<div class="kv"><span class="k">Horizon</span><span class="v">+2 → +10 s</span></div>';
+  renderRepTimeline();
+  renderRepControls();
+}
+var playTimer=null;
+function startPlay(){
+  if (playTimer) clearInterval(playTimer);
+  playTimer=setInterval(function(){
+    if (!S.replay.playing){ clearInterval(playTimer); playTimer=null; return; }
+    S.replay.t=Math.round((S.replay.t+S.replay.speed/4)%89);
+    if (S.replay.t===0) { /* looped */ }
+    renderReplay();
+  },400);
+}
+document.addEventListener('keydown',function(ev){
+  var rep=$('replay').getBoundingClientRect();
+  if (rep.top<window.innerHeight*.5 && rep.bottom>window.innerHeight*.5){
+    if (ev.key==='ArrowRight'){ S.replay.t=Math.min(89,S.replay.t+1); S.replay.playing=false; renderReplay(); }
+    if (ev.key==='ArrowLeft'){ S.replay.t=Math.max(0,S.replay.t-1); S.replay.playing=false; renderReplay(); }
+    if (ev.key===' '){ ev.preventDefault(); S.replay.playing=!S.replay.playing; if(S.replay.playing)startPlay(); renderReplay(); }
+  }
+});
+renderReplay();
+
+/* ============================================================
+   INCIDENTS
+   ============================================================ */
+function renderIncidents(){
+  $('incIndex').innerHTML =
+    '<div class="inc-row" style="cursor:default;border-bottom-color:var(--line2)">'+
+    ['ID','SEVERITY','TECHNIQUE','TARGET','PEAK','LEAD','STATUS'].map(function(h){
+      return '<span class="lbl">'+h+'</span>';
+    }).join('')+'</div>'+
+    INCIDENTS.map(function(inc){
+      return '<div class="inc-row'+(S.inc===inc.id?' sel':'')+'" data-id="'+inc.id+'">'+
+        '<span class="iid">'+inc.id+'</span>'+
+        '<span class="sev '+inc.cls+'">'+inc.sev+'</span>'+
+        '<span class="tech">'+inc.tech+'<small>'+inc.tid+'</small></span>'+
+        '<span class="tgt">'+inc.target+'</span>'+
+        '<span class="num">'+fmt(inc.peak,2)+'<span class="k lbl">peak</span></span>'+
+        '<span class="num">'+inc.lead.toFixed(1)+'s<span class="k lbl">lead</span></span>'+
+        '<span class="num" style="color:'+(inc.status==='TRIAGING'?C.red:inc.status==='CONTAINED'?C.amber:C.dim)+';font-size:9px;letter-spacing:.16em">'+inc.status+'</span>'+
+        '</div>';
+    }).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('.inc-row[data-id]'),function(n){
+    n.onclick=function(){ S.inc=n.dataset.id; renderIncidents(); toast('Incident selected',S.inc); };
+  });
+  var inc=INCIDENTS.find(function(x){return x.id===S.inc;});
+  var col = inc.cls==='crit'?C.red:inc.cls===''?C.amber:C.mint;
+  $('incDetail').innerHTML =
+    '<div class="inc-detail-grid">'+
+    '<div class="inc-left">'+
+      '<div class="lbl" style="margin-bottom:10px">'+inc.id+' · '+inc.status+' · '+inc.dur+' · ANALYST '+inc.analyst.toUpperCase()+'</div>'+
+      '<div class="inc-title"><span class="mono">'+inc.tid+'</span>'+esc(inc.tech)+'</div>'+
+      '<p style="margin-top:14px;font-size:13.5px;color:var(--mut);line-height:1.7;max-width:520px">'+esc(inc.note)+'</p>'+
+      '<div class="inc-acts">'+
+        '<button class="ia danger" id="iaIso">Isolate Target Host</button>'+
+        '<button class="ia" id="iaBlk">Block Source</button>'+
+        '<button class="ia go" id="iaExp">Export Report</button>'+
+      '</div>'+
+      '<div class="lbl" style="margin-top:26px">Attack path</div>'+
+      '<div class="blastpath">'+
+        '<div class="bnode hot"><div class="k lbl" style="color:'+C.red+'">Attacker</div><div class="v mono" style="font-size:12px">external</div><div class="lbl mono" style="color:var(--dim);font-size:9px">192.168.100.7</div></div>'+
+        '<div class="blink hot"></div>'+
+        '<div class="bnode hot"><div class="k lbl" style="color:'+C.red+'">Target</div><div class="v mono" style="font-size:12px">'+esc(inc.target.split(' · ')[0])+'</div><div class="lbl mono" style="color:var(--dim);font-size:9px">'+inc.target.split(' · ')[1]+'</div></div>'+
+        '<div class="blink warm"></div>'+
+        '<div class="bnode warm"><div class="k lbl" style="color:'+C.amber+'">At risk</div><div class="v mono" style="font-size:12px">srv-app</div><div class="lbl mono" style="color:var(--dim);font-size:9px">10.0.2.40</div></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="inc-right">'+
+      '<div class="lbl" style="margin-bottom:14px">Incident facts</div>'+
+      '<div class="kv-list">'+
+        '<div class="kv"><span class="k">Technique</span><span class="v">'+inc.tid+'</span></div>'+
+        '<div class="kv"><span class="k">Peak risk</span><span class="v" style="color:'+C.red+'">'+fmt(inc.peak,2)+'</span></div>'+
+        '<div class="kv"><span class="k">Lead time</span><span class="v mint">'+inc.lead.toFixed(1)+' s</span></div>'+
+        '<div class="kv"><span class="k">Target</span><span class="v">'+esc(inc.target)+'</span></div>'+
+        '<div class="kv"><span class="k">Duration</span><span class="v">'+esc(inc.dur)+'</span></div>'+
+        '<div class="kv"><span class="k">Analyst</span><span class="v">'+esc(inc.analyst)+'</span></div>'+
+      '</div>'+
+      '<div class="lbl" style="margin:24px 0 12px">Containment actions</div>'+
+      '<div class="kv-list">'+
+        '<div class="kv"><span class="k">Isolate host</span><span class="v" style="color:var(--dim)">SIMULATION ONLY</span></div>'+
+        '<div class="kv"><span class="k">Block source</span><span class="v" style="color:var(--dim)">SIMULATION ONLY</span></div>'+
+        '<div class="kv"><span class="k">Production change</span><span class="v" style="color:var(--mint)">NONE</span></div>'+
+      '</div>'+
+    '</div></div>';
+  $('iaIso').onclick=function(){ toast('Isolate '+inc.target.split(' · ')[0],'Simulation only — no production network change','amber'); };
+  $('iaBlk').onclick=function(){ toast('Block source','Simulation only — no production network change','amber'); };
+  $('iaExp').onclick=function(){ toast('Report exported',inc.id+'-report.md · markdown + evidence flows'); };
+}
+renderIncidents();
+
+/* ============================================================
+   SCROLLSPY + CLOCKS
+   ============================================================ */
+var navLinks=Array.prototype.slice.call(document.querySelectorAll('#navlinks a'));
+var sections=navLinks.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+window.addEventListener('scroll',function(){
+  var y=window.scrollY+window.innerHeight*.35, best=0;
+  sections.forEach(function(s,i){ if (s && s.offsetTop<=y) best=i; });
+  navLinks.forEach(function(a,i){ a.classList.toggle('on',i===best); });
+},{passive:true});
+navLinks[0].classList.add('on');
+
+function tick(){
+  var now=new Date();
+  $('utc').textContent=now.toISOString().slice(11,19);
+  S.uptime++;
+  $('uptime').textContent=pad2(Math.floor(S.uptime/3600))+':'+pad2(Math.floor(S.uptime/60)%60)+':'+pad2(S.uptime%60);
+}
+tick(); setInterval(tick,1000);
+
+})();
+</script>
+</body>
+</html>
