@@ -270,7 +270,7 @@ def ppt01_architecture(m: dict) -> None:
 
     fig, ax = fig_canvas()
 
-    _txt(ax, 0.35, 7.20, "FluxShield — Passive Flow-Based DDoS Detection",
+    _txt(ax, 0.35, 7.20, "Netra — Passive Flow-Based DDoS Detection",
          fs=18, color=NAV_D, weight="bold", ha="left")
     _txt(ax, 0.35, 6.88,
          "ML system architecture · DDoS-AT-2022 · every parameter shown is measured on the frozen pipeline",

@@ -1,6 +1,6 @@
 # Evaluation Protocol
 
-All evaluation in FluxShield is **capture-disjoint**: every split unit is a
+All evaluation in Netra is **capture-disjoint**: every split unit is a
 complete PCAP capture, never an individual flow. This document specifies each
 track, the reasoning, and the known limitations.
 

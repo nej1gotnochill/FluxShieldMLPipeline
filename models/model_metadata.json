@@ -2,7 +2,7 @@
   "dataset": {
     "name": "DDoS-AT-2022",
     "path": "E:\\archive",
-    "flow_table": "C:\\Users\\Divyansh Lalotra\\OneDrive\\Desktop\\FluxShield MLPipeline\\data\\processed\\flows",
+    "flow_table": "C:\\Users\\Divyansh Lalotra\\OneDrive\\Desktop\\Netra MLPipeline\\data\\processed\\flows",
     "n_flows_total": 1236285,
     "n_captures_total": 45
   },

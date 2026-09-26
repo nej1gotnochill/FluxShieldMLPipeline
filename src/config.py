@@ -1,4 +1,4 @@
-"""Central configuration loading for the FluxShield DDoS-AT-2022 pipeline.
+"""Central configuration loading for the Netra DDoS-AT-2022 pipeline.
 
 Priority order for every setting:
     1. Environment variables (DDOS_AT_DATASET_PATH, DDOS_AT_CONFIG)

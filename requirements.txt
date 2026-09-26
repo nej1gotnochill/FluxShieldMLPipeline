@@ -1,4 +1,4 @@
-# FluxShield DDoS-AT-2022 pipeline
+# Netra DDoS-AT-2022 pipeline
 # Python 3.12 — pinned to the versions measured in models/model_metadata.json
 scikit-learn>=1.5,<1.6
 numpy>=1.26
