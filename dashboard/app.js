@@ -1,5 +1,5 @@
 /* ============================================================
-   FluxShield SOC — application (nav, state, 12 screens)
+   Netra SOC — application (nav, state, 12 screens)
    ============================================================ */
 (function () {
   'use strict';
@@ -72,7 +72,7 @@
     }
     ov.innerHTML =
       '<div class="exec-card" role="dialog" aria-label="Executive summary">' +
-      '<div class="xhd"><div class="t">Executive Summary<small>FluxShield · HQ-CORE / Enterprise Segment · ' + esc(new Date().toISOString().slice(11, 19)) + ' UTC</small></div>' +
+      '<div class="xhd"><div class="t">Executive Summary<small>Netra · HQ-CORE / Enterprise Segment · ' + esc(new Date().toISOString().slice(11, 19)) + ' UTC</small></div>' +
       '<button class="exec-btn on" id="execClose">CLOSE</button></div>' +
       '<div class="exec-kpis">' +
       '<div class="cell"><div class="k">Overall Risk</div><div class="v red">' + fmt(O.observedRisk) + '</div><div class="s">observed · window #90</div></div>' +
@@ -835,6 +835,12 @@
         poly([[p.x + s, p.y - h], [p.x, p.y - h + dy], [p.x, p.y + dy], [p.x + s, p.y]], netShade(col, -0.18), null, 0, a);
         poly([[p.x, p.y - h - dy], [p.x + s, p.y - h], [p.x, p.y - h + dy], [p.x - s, p.y - h]], netShade(col, 0.38), null, 0, a);
         poly([[p.x - 1.5, p.y - h - 1.5], [p.x + 1.5, p.y - h], [p.x, p.y - h + 1.5], [p.x - 1.5, p.y - h - 3]], col, null, 0, a);
+        /* heartbeat on threatened hosts */
+        if (n.kind === 'high' || n.kind === 'crit') {
+          var ring = el('path', { d: 'M' + [[p.x, p.y - h - dy - 5], [p.x + s + 5, p.y - h], [p.x, p.y - h + dy + 5], [p.x - s - 5, p.y - h]].map(function (q2) { return q2[0] + ',' + q2[1]; }).join('L') + 'Z',
+            fill: 'none', stroke: col, 'stroke-width': 1, 'class': 'cube-pulse' }, svg);
+          ring.style.animationDelay = (Math.abs(Math.sin(n.u * 12.9898 + n.v * 78.233)) * 1.4).toFixed(2) + 's';
+        }
         if (S.host === id) {
           poly([[p.x, p.y - h - dy - 4], [p.x + s + 4, p.y - h], [p.x, p.y - h + dy + 4], [p.x - s - 4, p.y - h]], 'none', '#F4F5F1', 1, 1);
         }
@@ -854,7 +860,10 @@
         var stroke = '#292C29', dash = null, w = 1;
         if (kind === 'hot') { stroke = '#E15252'; w = 2; dash = '5 3'; }
         else if (kind === 'warm') { stroke = '#E0A84A'; w = 2; dash = '4 4'; }
-        el('line', { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: stroke, 'stroke-width': w, 'stroke-dasharray': dash }, svg);
+        var lattr = { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: stroke, 'stroke-width': w };
+        if (dash) lattr['stroke-dasharray'] = dash;
+        if (kind === 'hot' || kind === 'warm') lattr.class = kind === 'hot' ? 'edge-hot' : 'edge-warm';
+        el('line', lattr, svg);
         if (meta) {
           var hitl = el('line', { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: 'transparent', 'stroke-width': 12, cursor: 'help' }, svg);
           hitl.addEventListener('mousemove', function (ev) {
@@ -927,6 +936,49 @@
         var p1 = NN[pair[0]]._p, p2 = NN[pair[1]]._p;
         el('line', { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: '#737871', 'stroke-width': 1, 'stroke-dasharray': '2 3', opacity: .8 }, svg);
       });
+
+      /* living traffic — flow particles along edges, density follows threat.
+         Layer sits between links and cubes (inserted here in DOM order). */
+      var flowG = el('g', { 'class': 'net-flow' }, svg);
+      var NETPK = [];
+      var NET_EDGE_MAP = [
+        ['ext-src', 'dmz-web', 'hot'], ['ext-src', 'dmz-web', 'hot'], ['ext-src', 'dmz-web', 'hot'],
+        ['dmz-web', 'srv-app', 'warm'], ['dmz-web', 'srv-app', 'warm'],
+        ['srv-app', 'srv-db', 'warm'],
+        ['internet', 'tap', 'tap'], ['tap', 'fw', 'tap'],
+        ['internet', 'fw', 'n'], ['fw', 'dmz-web', 'n'], ['fw', 'dmz-vpn', 'n'],
+        ['dmz-vpn', 'srv-id', 'n'], ['dmz-mail', 'srv-file', 'n'],
+        ['srv-app', 'srv-id', 'n'], ['srv-id', 'srv-file', 'n'],
+        ['srv-app', 'ws1', 'n'], ['srv-db', 'ws3', 'n'], ['ws5', 'plc-gw', 'n'], ['plc-gw', 'plc-01', 'n']
+      ];
+      function netSpawn() {
+        var e = NET_EDGE_MAP[Math.floor(Math.random() * NET_EDGE_MAP.length)];
+        var p1 = NN[e[0]]._p, p2 = NN[e[1]]._p;
+        var base = e[2] === 'hot' ? 0.014 : e[2] === 'warm' ? 0.009 : 0.006;
+        NETPK.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, t: 0,
+          sp: base + Math.random() * 0.006, kind: e[2],
+          el: el('circle', { r: e[2] === 'hot' ? 1.8 : 1.3,
+            fill: e[2] === 'hot' ? '#E15252' : e[2] === 'warm' ? '#E0A84A' : 'rgba(201,255,63,.55)',
+            opacity: e[2] === 'n' ? 0.5 : 0.9 }, flowG) });
+      }
+      var hotN = 0;
+      D.HOSTS.forEach(function (h) { if (h.risk >= 0.65) hotN++; });
+      var pkTarget = Math.min(26, 9 + hotN * 3);
+      function netTick() {
+        if (!flowG.isConnected) return;   /* screen re-rendered or removed → stop */
+        if (NETPK.length < pkTarget && Math.random() < 0.25) netSpawn();
+        for (var i = NETPK.length - 1; i >= 0; i--) {
+          var p = NETPK[i];
+          p.t += p.sp;
+          if (p.t >= 1) { p.el.remove(); NETPK.splice(i, 1); continue; }
+          p.el.setAttribute('cx', p.x1 + (p.x2 - p.x1) * p.t);
+          p.el.setAttribute('cy', p.y1 + (p.y2 - p.y1) * p.t);
+        }
+        requestAnimationFrame(netTick);
+      }
+      if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+        requestAnimationFrame(netTick);   /* first frame runs after the screen is attached */
+      }
 
       /* cubes + labels */
       ['internet', 'ext-src', 'tap', 'fw', 'dmz-web', 'dmz-vpn', 'dmz-mail',
@@ -1791,7 +1843,7 @@
       var ntg = div('nt-grid');
       ntg.innerHTML =
         '<div class="cell"><div class="k">Mode</div><div class="big">NO-TOUCH MODE</div></div>' +
-        '<div class="cell"><div class="s" style="font-size:10px;color:var(--text2)">This deployment is <b>PASSIVE / ONE-WAY</b>. FluxShield reads a SPAN/TAP mirror and never injects, resets, or reshapes production traffic. Containment actions exist as forecasts of network consequence only.</b></div></div>' +
+        '<div class="cell"><div class="s" style="font-size:10px;color:var(--text2)">This deployment is <b>PASSIVE / ONE-WAY</b>. Netra reads a SPAN/TAP mirror and never injects, resets, or reshapes production traffic. Containment actions exist as forecasts of network consequence only.</b></div></div>' +
         '<div class="cell" style="text-align:right"><div class="k">State</div><div class="big" style="font-size:15px">● ACTIVE</div></div>';
       nt.appendChild(ntg);
       wrap.appendChild(nt);
@@ -1963,8 +2015,8 @@
     /* boot pulse — reflects data provenance */
     var P = D.provenance || {};
     setTimeout(function () {
-      if (P.live) toast('FluxShield online', 'Pipeline data loaded (' + P.sections + ' sections) · sensor running · inference live');
-      else toast('FluxShield online', 'Simulated fixtures · sensor running · inference live');
+      if (P.live) toast('Netra online', 'Pipeline data loaded (' + P.sections + ' sections) · sensor running · inference live');
+      else toast('Netra online', 'Simulated fixtures · sensor running · inference live');
     }, 900);
   }
 

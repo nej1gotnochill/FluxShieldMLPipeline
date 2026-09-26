@@ -1,5 +1,5 @@
 /* ============================================================
-   FluxShield — SVG helpers + chart renderers (flat, thin, dark)
+   Netra — SVG helpers + chart renderers (flat, thin, dark)
    ============================================================ */
 window.FS = (function () {
   'use strict';

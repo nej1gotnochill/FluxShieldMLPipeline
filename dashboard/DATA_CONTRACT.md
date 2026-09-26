@@ -1,4 +1,4 @@
-# FluxShield UI data contract — v1
+# Netra UI data contract — v1
 
 The dashboard reads a single JSON document. Your ML pipeline writes it; the UI renders it.
 No other backend changes are required on the UI side.
@@ -104,7 +104,7 @@ doc_sections = dict(
     hosts=fs.hosts(host_rows),
 )
 
-fs.emit(m=fs.meta(source="fluxshield-ml"), path="data.json", **doc_sections)
+fs.emit(m=fs.meta(source="netra-ml"), path="data.json", **doc_sections)
 ```
 
 Run `python fs_emit.py` for a self-test that writes a full sample document.
@@ -120,7 +120,7 @@ doc = {
     "meta": {
         "schema_version": 1,
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-        "source": "fluxshield-ml",
+        "source": "netra-ml",
     },
     # ... sections per the shape above
 }

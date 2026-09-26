@@ -1,4 +1,4 @@
-"""FluxShield pipeline -> UI data emitter.
+"""Netra pipeline -> UI data emitter.
 
 Call `emit(...)` (or `build_document` + `write_document`) from your ML
 pipeline to produce `fluxshield/data.json`, the single document the
@@ -80,7 +80,7 @@ def _clean(d: Mapping[str, Any]) -> Dict[str, Any]:
 
 # --------------------------------------------------------------- sections ---
 
-def meta(generated_at: Optional[str] = None, source: str = "fluxshield-ml") -> Dict[str, Any]:
+def meta(generated_at: Optional[str] = None, source: str = "netra-ml") -> Dict[str, Any]:
     """Required. generated_at defaults to now (UTC, ISO-8601, seconds)."""
     return {
         "schema_version": SCHEMA_VERSION,
@@ -436,7 +436,7 @@ if __name__ == "__main__":
     import sys
 
     doc = build_document(
-        meta(source="fluxshield-ml"),
+        meta(source="netra-ml"),
         overview=overview(
             observed_risk=0.739, predicted_tid="T1190",
             predicted_name="Exploit Public-Facing Application",
