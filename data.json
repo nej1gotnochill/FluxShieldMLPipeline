@@ -1,0 +1,88 @@
+{
+  "meta": {
+    "generated_at": "2026-09-26T19:45:03Z",
+    "source": "fixture-sample",
+    "schema_version": 1
+  },
+  "overview": {
+    "observedRisk": 0.739,
+    "predicted": {
+      "tid": "T1190",
+      "name": "Exploit Public-Facing Application",
+      "tactic": "TA0001 Initial Access",
+      "conf": 0.833,
+      "desc": "Exploit attempts against the public-facing application."
+    },
+    "maxFuture": 0.953,
+    "source": "rule-adjusted · model 0.559",
+    "earlyWarning": 6.8,
+    "anomaly": 95.3,
+    "throughput": 547.9,
+    "flows": "1.5k",
+    "packets": "11.2k",
+    "pipeline": "11.7 ms",
+    "loss": 3.03,
+    "windowsRetained": 90
+  },
+  "ml": {
+    "model": "ExtraTrees 300",
+    "calibration": "Sigmoid",
+    "threshold": 0.5,
+    "features": 66,
+    "evalProtocol": "Capture-disjoint · attack-family holdout",
+    "early": [
+      { "t": "1 s", "recall": 68.16 },
+      { "t": "3 s", "recall": 99.79 },
+      { "t": "5 s", "recall": 99.79 }
+    ],
+    "trackB": 97.4,
+    "final": [
+      { "k": "Recall", "v": "99.7849%" },
+      { "k": "Precision", "v": "99.9998%" },
+      { "k": "F1", "v": "99.8922%" },
+      { "k": "FPR", "v": "0.018%" }
+    ],
+    "comparison": [
+      { "nm": "Logistic Regression", "f1": 96.41, "sel": false, "why": "linear baseline — underfits flow-rate interactions" },
+      { "nm": "Random Forest", "f1": 99.12, "sel": false, "why": "strong but heavier at inference" },
+      { "nm": "ExtraTrees · 300", "f1": 99.89, "sel": true, "why": "SELECTED FOR ROBUST GENERALIZATION" },
+      { "nm": "HistGradientBoosting", "f1": 99.57, "sel": false, "why": "highest single-split score; less stable on unseen families" }
+    ]
+  },
+  "windows": [
+    { "i": 0, "risk": 0.312, "peak": 0.44, "pps": 2410, "flow": 52, "alert": false, "stage": "RECON", "technique": "T1046", "target": "—", "tsec": 70999 },
+    { "i": 1, "risk": 0.355, "peak": 0.48, "pps": 2610, "flow": 55, "alert": false, "stage": "RECON", "technique": "T1046", "target": "—", "tsec": 71001 }
+  ],
+  "hosts": [
+    { "id": "dmz-web", "ip": "10.0.3.10", "zone": "DMZ", "kind": "server", "risk": 0.839, "state": "high", "tech": "T1190 · T1110", "flows": 412 },
+    { "id": "ext-src", "ip": "192.168.100.7", "zone": "External", "kind": "external", "risk": 0.902, "state": "high", "tech": "T1110 source", "flows": 1210 }
+  ],
+  "branches": [
+    { "id": "A", "p": 66, "tid": "T1190", "desc": "Exploit the public-facing application", "ttE": "+6s", "asset": "dmz-web", "risk": 0.953, "color": "red" },
+    { "id": "B", "p": 23, "tid": "T1110", "desc": "Reuse harvested credentials on the VPN", "ttE": "+12s", "asset": "srv-id", "risk": 0.655, "color": "amber" },
+    { "id": "C", "p": 10, "tid": "—", "desc": "Account lockout ends the attempt", "ttE": "+8s", "asset": "external", "risk": 0.12, "color": "dim" }
+  ],
+  "incidents": [
+    { "id": "INC-0142", "sev": "HIGH", "status": "TRIAGING", "tid": "T1110", "tech": "Brute Force", "target": "dmz-web", "ip": "10.0.3.10", "peak": 0.772, "lead": 11.4, "dur": "34s", "analyst": "a.rao", "alerts": 147, "opened": "19:48:42", "evidence": 58 }
+  ],
+  "events": [
+    { "ts": "19:44:52", "sev": "CRIT", "src": "inference", "host": "dmz-web", "msg": "Model risk 0.839 over threshold 0.65 — alert raised" }
+  ],
+  "predictions": [
+    { "tid": "T1190", "name": "Exploit Public-Facing Application", "p": 0.833, "eta": "+6s", "conf": "0.833" }
+  ],
+  "stateVector": [
+    { "nm": "H_emb_0", "v": 0.335, "hot": true }
+  ],
+  "attack": [
+    { "tactic": "Initial Access", "items": [ { "id": "T1190", "name": "Exploit Public-Facing App", "state": "hot", "p": 0.83 } ] }
+  ],
+  "campaign": {
+    "id": "CMP-007 · BRUTE-FORCE → EXPLOIT CHAIN",
+    "started": "19:43:19",
+    "hosts": 4,
+    "flows": 1918,
+    "alerts": 307,
+    "stages": [ { "nm": "Recon", "ts": "19:43:19", "done": true, "tid": "T1046" } ]
+  }
+}
