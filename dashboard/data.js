@@ -1,5 +1,5 @@
 /* ============================================================
-   FluxShield — datasets (static fixture data for the SOC UI)
+   Netra — datasets (static fixture data for the SOC UI)
    ============================================================ */
 window.FSDATA = (function () {
   'use strict';

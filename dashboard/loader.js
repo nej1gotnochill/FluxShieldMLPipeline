@@ -1,5 +1,5 @@
 /* ============================================================
-   FluxShield — pipeline data loader (contract v1)
+   Netra — pipeline data loader (contract v1)
    Fetches data.json written by the ML pipeline, validates each
    section, and merges over built-in fixtures. Any bad/missing
    section falls back individually — the UI never breaks.
