@@ -1395,6 +1395,7 @@ window.FSLOAD = (function () {
     if (!isObj(d)) return null;
     var m = {};
     if (isStr(d.model)) m.model = d.model;
+    if (isNum(d.modelCount) && d.modelCount >= 0) m.modelCount = d.modelCount;
     if (isStr(d.calibration)) m.calibration = d.calibration;
     if (isNum(d.threshold) && d.threshold > 0 && d.threshold < 1) m.threshold = d.threshold;
     if (isNum(d.features) && d.features > 0) m.features = d.features;
@@ -1446,6 +1447,27 @@ window.FSLOAD = (function () {
         }
       });
       if (cmp.length) m.comparison = cmp;
+    }
+    if (isObj(d.fixtureEval)) {
+      var fe = {};
+      Object.keys(d.fixtureEval).forEach(function (k) {
+        var r = d.fixtureEval[k];
+        if (!isObj(r)) { warn('ml.fixtureEval[' + k + '] skipped'); return; }
+        var by = {};
+        if (isObj(r.alerts_by_class)) {
+          Object.keys(r.alerts_by_class).forEach(function (ck) {
+            if (isNum(r.alerts_by_class[ck])) by[ck] = r.alerts_by_class[ck];
+          });
+        }
+        fe[k] = {
+          expected: r.expected == null ? null : String(r.expected),
+          alerts_by_class: by,
+          total_alerts: isNum(r.total_alerts) ? r.total_alerts : 0,
+          note: isStr(r.note) ? r.note : '',
+          scenario_frames: isNum(r.scenario_frames) ? r.scenario_frames : null
+        };
+      });
+      if (Object.keys(fe).length) m.fixtureEval = fe;
     }
     return Object.keys(m).length ? m : null;
   }
@@ -1564,7 +1586,8 @@ window.FSLOAD = (function () {
         name: isStr(p.name) ? p.name : p.tid,
         p: clamp01(p.p),
         eta: isStr(p.eta) ? p.eta : '—',
-        conf: isStr(p.conf) ? p.conf : (isNum(p.conf) ? String(p.conf) : '—')
+        conf: isStr(p.conf) ? p.conf : (isNum(p.conf) ? String(p.conf) : '—'),
+        tactic: isStr(p.tactic) ? p.tactic : '—'
       });
     });
     return out.length ? out : null;
@@ -1645,7 +1668,7 @@ window.FSLOAD = (function () {
         confidence: isNum(a.confidence) ? clamp01(a.confidence) : a.risk,
         risk: clamp01(a.risk),
         window_sec: isNum(a.window_sec) ? a.window_sec : 0,
-        model: isObj(a.model) ? a.model : { name: '—', version: '—', threshold: 0 },
+        model: (isObj(a.model) && isStr(a.model.name)) ? a.model : { name: '—', version: '—', threshold: 0 },
         evidence: isObj(a.evidence) ? a.evidence : {},
         state: isStr(a.state) ? a.state : '—'
       });
@@ -2349,17 +2372,29 @@ window.FS = (function () {
       edh.innerHTML = '<div class="t">Early Detection<span class="sub">&nbsp;·&nbsp; recall from partial evidence</span></div>';
       ed.appendChild(edh);
       var edb = div('panel-bd ed-grid');
-      var EARLY = [
-        { t: '1s', r: '68.16%', w: 34, cls: 'dim' },
-        { t: '3s', r: '99.79%', w: 78, cls: 'dom' },
-        { t: '5s', r: '99.79%', w: 100, cls: '' }
-      ];
-      EARLY.forEach(function (e) {
-        edb.innerHTML += '<div class="ed-item ' + e.cls + '"><div class="t">' + e.t + '</div><div class="r">' + e.r + '</div>' +
-          '<div class="pbar"><i style="width:' + e.w + '%"></i></div><div class="s">flow evidence ' + e.w + '%</div></div>';
+      var EARLY = (D.ML && D.ML.early) || [];
+      var maxRecall = 0, domIx = -1;
+      EARLY.forEach(function (e, ix) {
+        var r = typeof e.recall === 'number' ? e.recall : 0;
+        if (r > maxRecall) { maxRecall = r; domIx = ix; }
+      });
+      var EDR = EARLY.map(function (e, ix) {
+        var r = typeof e.recall === 'number' ? e.recall : 0;
+        return { t: String(e.t), r: r.toFixed(2) + '%', w: Math.max(0, Math.min(100, Math.round(r))),
+                 cls: ix === domIx ? 'dom' : r < 80 ? 'dim' : '' };
+      });
+      if (!EDR.length) EDR = [{ t: '—', r: '—', w: 0, cls: 'dim' }];
+      EDR.forEach(function (e) {
+        edb.innerHTML += '<div class="ed-item ' + e.cls + '"><div class="t">' + esc(e.t) + '</div><div class="r">' + esc(e.r) + '</div>' +
+          '<div class="pbar"><i style="width:' + e.w + '%"></i></div><div class="s">of full-flow recall</div></div>';
       });
       ed.appendChild(edb);
-      ed.appendChild(div('hint', 'Full-flow performance is reached from partial traffic evidence — the 3-second window already matches the 5-second score.'));
+      var domE = domIx >= 0 ? EARLY[domIx] : null;
+      var lastE = EARLY.length ? EARLY[EARLY.length - 1] : null;
+      var edHint = (domE && lastE && domIx < EARLY.length - 1)
+        ? 'Full-flow performance is reached from partial traffic evidence — the ' + esc(String(domE.t)) + ' window already matches the ' + esc(String(lastE.t)) + ' score.'
+        : 'Partial-evidence recall unavailable in this document.';
+      ed.appendChild(div('hint', edHint));
       band1.appendChild(ed);
       root.appendChild(band1);
 
@@ -2456,8 +2491,8 @@ window.FS = (function () {
         { t: '00.8 s', k: 'host risk rising — dmz-web', kind: 'warn' },
         { t: '01.7 s', k: 'behavior classified — brute force T1110', kind: '' },
         { t: '02.4 s', k: 'attack path inferred — ext → dmz-web', kind: '' },
-        { t: '03.0 s', k: 'high-confidence detection — risk 0.739', kind: 'crit' },
-        { t: '08.0 s', k: 'projected escalation — peak 0.953', kind: 'crit', future: true }
+        { t: '03.0 s', k: 'high-confidence detection — risk ' + fmt(O.observedRisk), kind: 'crit' },
+        { t: '08.0 s', k: 'projected escalation — peak ' + fmt(O.maxFuture), kind: 'crit', future: true }
       ];
       var tlPanel = panel('Threat Timeline', 'detection sequence · current window', (function () {
         var w = div('tl-wrap');
@@ -2538,9 +2573,12 @@ window.FS = (function () {
       strip.style.marginBottom = '12px';
       var inner = div('astrip');
       var left = div('left');
-      left.innerHTML = '<div class="k"><span class="dot" style="background:' + FS.riskColor(0.58) + '"></span>Active Attack <span class="rr txt-dim">0.580 NOMINAL</span></div>' +
-        '<div class="tt"><span class="red">T1110</span> Brute Force</div>' +
-        '<div class="s">Credential Access → dmz-web</div>';
+      var OA = D.OVERVIEW || {};
+      var pr = OA.predicted || {};
+      var prConf = typeof pr.conf === 'number' ? pr.conf : null;
+      left.innerHTML = '<div class="k"><span class="dot" style="background:' + (prConf != null ? FS.riskColor(prConf) : 'var(--text3)') + '"></span>Active Attack <span class="rr txt-dim">' + (prConf != null ? prConf.toFixed(3) + (prConf >= 0.65 ? ' ELEVATED' : ' NOMINAL') : '— NOMINAL') + '</span></div>' +
+        '<div class="tt"><span class="red">' + esc(pr.tid || '—') + '</span> ' + esc(pr.name || 'Unattributed activity') + '</div>' +
+        '<div class="s">' + esc(pr.tactic || 'tactic pending') + '</div>';
       inner.appendChild(left);
       /* lifecycle rail */
       var rail = div('rail');
@@ -2651,7 +2689,8 @@ window.FS = (function () {
       var nowTxt = el('text', { x: 350, y: 210, 'text-anchor': 'end', 'font-size': 11, fill: '#F4F5F1', 'letter-spacing': '1' }, svgt);
       nowTxt.textContent = 'NOW';
       var rTxt = el('text', { x: 350, y: 224, 'text-anchor': 'end', 'font-size': 10, fill: '#737871' }, svgt);
-      rTxt.textContent = 'T1110 · risk 0.580';
+      var OA3 = D.OVERVIEW || {}, pr3 = OA3.predicted || {}, prConf3 = typeof pr3.conf === 'number' ? pr3.conf : null;
+      rTxt.textContent = (pr3.tid || '—') + ' · risk ' + (prConf3 != null ? prConf3.toFixed(3) : '—');
       var obTxt = el('text', { x: 30, y: 252, 'font-size': 10, fill: '#565B54', 'letter-spacing': '2' }, svgt);
       obTxt.textContent = 'OBSERVED';
 
@@ -2791,13 +2830,14 @@ window.FS = (function () {
       aph.innerHTML = '<div class="t">Attack Path<span class="sub">&nbsp;·&nbsp; campaign #1 · ' + (hot ? 'active' : 'no active path') + '</span></div><div class="right">' + pill(hot ? 'CRITICAL' : 'NOMINAL', hot ? 'red' : 'green') + '</div>';
       apPanel.appendChild(aph);
       var ap = div('apath');
+      var hr = function (id) { var x = D.HOSTS.filter(function (q) { return q.id === id || q.ip === id; })[0]; return x && typeof x.risk === 'number' ? x.risk.toFixed(2) : '—'; };
       if (hot) {
         ap.innerHTML =
-          '<div class="node hot"><div class="lbl red">EXTERNAL</div><div class="nm">ext-src</div><div class="ip">192.168.100.7</div><div class="x">risk 0.902</div></div>' +
+          '<div class="node hot"><div class="lbl red">EXTERNAL</div><div class="nm">ext-src</div><div class="ip">192.168.100.7</div><div class="x">risk ' + hr('192.168.100.7') + '</div></div>' +
           '<div class="link dash hot"></div><span class="xmeta">T1110 brute force</span><div class="link dash hot"></div>' +
-          '<div class="node hot"><div class="lbl red">DMZ</div><div class="nm">dmz-web</div><div class="ip">10.0.3.10</div><div class="x">risk 0.839</div></div>' +
+          '<div class="node hot"><div class="lbl red">DMZ</div><div class="nm">dmz-web</div><div class="ip">10.0.3.10</div><div class="x">risk ' + hr('10.0.3.10') + '</div></div>' +
           '<div class="link dash warm"></div><span class="xmeta">T1021 lateral · 54.4 KB</span><div class="link dash warm"></div>' +
-          '<div class="node warm"><div class="lbl amber">SERVERS</div><div class="nm">srv-app</div><div class="ip">10.0.2.40</div><div class="x">risk 0.611</div></div>';
+          '<div class="node warm"><div class="lbl amber">SERVERS</div><div class="nm">srv-app</div><div class="ip">10.0.2.40</div><div class="x">risk ' + hr('10.0.2.40') + '</div></div>';
       } else {
         ap.innerHTML =
           '<div class="node cool"><div class="lbl">' + esc(H.zone).toUpperCase() + '</div><div class="nm">' + esc(H.id) + '</div><div class="ip">' + esc(H.ip) + '</div><div class="x">risk ' + fmt(H.risk, 2) + '</div></div>' +
@@ -2964,6 +3004,12 @@ window.FS = (function () {
     build: function (root) {
       var panelWrap = div('panel');
       panelWrap.style.cssText = 'flex:1;display:flex;flex-direction:column;margin:12px;min-height:0';
+      /* host risk lookups — narrative screens read risks from the live
+         document, never hard-coded (test_dashboard_contract) */
+      var HX = {};
+      D.HOSTS.forEach(function (x) { HX[x.id] = x; if (x.ip) HX[x.ip] = x; });
+      function hrisk(id) { var x = HX[id]; return x && typeof x.risk === 'number' ? x.risk.toFixed(2) : '—'; }
+      function hflows(id) { var x = HX[id]; return x && typeof x.flows === 'number' ? x.flows.toLocaleString() : '—'; }
       var kpis = div('net-kpis');
       [
         { k: 'Total Hosts', v: String(D.HOSTS.length), cls: '' },
@@ -3054,10 +3100,10 @@ window.FS = (function () {
       /* node registry — (u,v) on the iso plane */
       var NN = {
         'internet': { u: .05, v: .26, nm: 'INTERNET', sub: ['—'], col: '#343831', kind: 'norm' },
-        'ext-src': { u: .05, v: .60, nm: 'EXT-SRC', sub: ['192.168.100.7', 'risk 0.902'], col: '#E15252', kind: 'high', lc: '#E15252' },
+        'ext-src': { u: .05, v: .60, nm: 'EXT-SRC', sub: ['192.168.100.7', 'risk ' + hrisk('192.168.100.7')], col: '#E15252', kind: 'high', lc: '#E15252' },
         'tap': { u: .20, v: .43, nm: 'TAP/SPAN', sub: ['ONE-WAY'], col: '#C9FF3F', kind: 'tap' },
         'fw': { u: .315, v: .43, nm: 'FW/EDGE', sub: [], col: '#565B54', kind: 'db' },
-        'dmz-web': { u: .44, v: .28, nm: 'DMZ-WEB', sub: ['10.0.3.10', 'risk 0.839'], col: '#E15252', kind: 'high', lc: '#E15252' },
+        'dmz-web': { u: .44, v: .28, nm: 'DMZ-WEB', sub: ['10.0.3.10', 'risk ' + hrisk('10.0.3.10')], col: '#E15252', kind: 'high', lc: '#E15252' },
         'dmz-vpn': { u: .44, v: .60, nm: 'DMZ-VPN', sub: [], col: '#343831', kind: 'norm' },
         'dmz-mail': { u: .44, v: .84, nm: 'DMZ-MAIL', sub: [], col: '#343831', kind: 'norm' },
         'srv-app': { u: .60, v: .28, nm: 'SRV-APP', sub: ['10.0.2.40', 'risk 0.611'], col: '#E0A84A', kind: 'susp', lc: '#E0A84A' },
@@ -3093,8 +3139,8 @@ window.FS = (function () {
       Object.keys(NN).forEach(function (id) { NN[id]._p = netIso(NN[id].u, NN[id].v); });
 
       /* links — with edge telemetry on hover */
-      nlink('ext-src', 'dmz-web', 'hot', { src: 'ext-src', dst: 'dmz-web', proto: 'TCP', flows: '1,210 · brute force', risk: '0.902', riskClass: 'red' });
-      nlink('dmz-web', 'srv-app', 'warm', { src: 'dmz-web', dst: 'srv-app', proto: 'TCP', flows: '188 · lateral', risk: '0.611', riskClass: 'amber' });
+      nlink('ext-src', 'dmz-web', 'hot', { src: 'ext-src', dst: 'dmz-web', proto: 'TCP', flows: hflows('192.168.100.7') + ' · observed', risk: hrisk('192.168.100.7'), riskClass: 'red' });
+      nlink('dmz-web', 'srv-app', 'warm', { src: 'dmz-web', dst: 'srv-app', proto: 'TCP', flows: hflows('10.0.2.40') + ' · lateral', risk: hrisk('10.0.2.40'), riskClass: 'amber' });
       nlink('srv-app', 'srv-db', 'warm', { src: 'srv-app', dst: 'srv-db', proto: 'TCP :5432', flows: '96 · 54.4 KB', risk: '0.567', riskClass: 'amber' });
       nlink('internet', 'fw');
       nlink('fw', 'dmz-web');
@@ -3256,16 +3302,19 @@ window.FS = (function () {
         var w = div('panel-bd');
         var obs = D.windows.slice(-10).map(function (x) { return x.risk; });
         var fore = [], band = [];
-        var r = 0.739;
-        for (var i = 0; i < 8; i++) {
-          r = Math.min(0.953, r + (0.953 - 0.739) / 7 * (0.8 + 0.4 * Math.cos(i)));
-          fore.push(r); band.push([Math.max(0.05, r - 0.15 - i * 0.01), Math.min(1, r + 0.09 + i * 0.02)]);
+        var r = D.OVERVIEW.observedRisk, cap = D.OVERVIEW.maxFuture;
+        if (typeof r === 'number' && typeof cap === 'number' && cap > r && obs.length) {
+          for (var i = 0; i < 8; i++) {
+            r = Math.min(cap, r + (cap - r) / 7 * (0.8 + 0.4 * Math.cos(i)));
+            fore.push(r); band.push([Math.max(0.05, r - 0.15 - i * 0.01), Math.min(1, r + 0.09 + i * 0.02)]);
+          }
+          w.appendChild(FS.seriesChart({
+            w: 1000, h: 180, obs: obs, fore: fore, band: band, foreAppend: 8, threshold: 0.65,
+            xLabels: [{ i: 2, t: '+2s' }, { i: 5, t: '+8s' }, { i: 7, t: '+16s', anchor: 'end' }]
+          }));
+        } else {
+          w.appendChild(div('hint', 'Forecast rollout unavailable — observed risk and forecast peak missing from this document.'));
         }
-        w.appendChild(FS.seriesChart({
-          w: 1000, h: 180, obs: obs, fore: fore, band: band, foreAppend: 8, threshold: 0.65,
-          xLabels: [{ i: 2, t: '+2s' }, { i: 5, t: '+8s' }, { i: 7, t: '+16s', anchor: 'end' }]
-        }));
-        return w;
       })(), null, { pad: false });
       wrap.appendChild(roll);
 
@@ -3328,16 +3377,19 @@ window.FS = (function () {
       /* host involvement */
       var hp = panel('Host Involvement', 'campaign #1', (function () {
         var box = div('panel-bd');
-        [['dmz-web', '10.0.3.10', 'Initial Access — T1110 brute force', 0.839, 'OBSERVED'],
-         ['srv-app', '10.0.2.40', 'Post-exploit beacon target', 0.611, 'FORECAST'],
-         ['srv-db', '10.0.2.50', 'Lateral movement risk', 0.567, 'FORECAST'],
-         ['srv-id', '10.0.2.20', 'Credential reuse on VPN (branch B)', 0.234, 'FORECAST']].forEach(function (h) {
+        var hx = {};
+        D.HOSTS.forEach(function (q) { hx[q.id] = q; if (q.ip) hx[q.ip] = q; });
+        var rv = function (ip) { var q = hx[ip]; return q && typeof q.risk === 'number' ? q.risk : null; };
+        [['dmz-web', '10.0.3.10', 'Initial Access — T1110 brute force', rv('10.0.3.10'), 'OBSERVED'],
+         ['srv-app', '10.0.2.40', 'Post-exploit beacon target', rv('10.0.2.40'), 'FORECAST'],
+         ['srv-db', '10.0.2.50', 'Lateral movement risk', rv('10.0.2.50'), 'FORECAST'],
+         ['srv-id', '10.0.2.20', 'Credential reuse on VPN (branch B)', rv('10.0.2.20'), 'FORECAST']].forEach(function (h) {
           var row = div('ar-row');
           row.style.gridTemplateColumns = '200px 1fr 160px 110px';
           row.innerHTML = '<span class="k">' + h[0] + ' · ' + h[1] + '</span>' +
-            '<span class="bar"><i style="width:' + Math.round(h[3] * 100) + '%;background:' + FS.riskColor(h[3]) + '"></i></span>' +
+            '<span class="bar"><i style="width:' + (h[3] == null ? 0 : Math.round(h[3] * 100)) + '%;background:' + (h[3] == null ? 'var(--panel3)' : FS.riskColor(h[3])) + '"></i></span>' +
             '<span class="txt-dim">' + esc(h[2]) + '</span>' +
-            '<span class="delta ' + (h[4] === 'OBSERVED' ? 'txt-red' : 'txt-amber') + '" style="text-align:right">' + h[4] + ' ' + fmt(h[3], 2) + '</span>';
+            '<span class="delta ' + (h[4] === 'OBSERVED' ? 'txt-red' : 'txt-amber') + '" style="text-align:right">' + h[4] + ' ' + (h[3] == null ? '—' : fmt(h[3], 2)) + '</span>';
           box.appendChild(row);
         });
         return box;
@@ -4023,16 +4075,15 @@ window.FS = (function () {
       st.appendChild(ms);
       wrap.appendChild(st);
 
-      /* model comparison — evidence, not marketing (live data via loader, fixture fallback) */
-      var COMPARISON = D.ML.comparison || [
-        { nm: 'Logistic Regression', f1: 96.41, why: 'linear baseline — underfits flow-rate interactions' },
-        { nm: 'Random Forest', f1: 99.12, why: 'strong but heavier at inference' },
-        { nm: 'ExtraTrees · 300', f1: 99.89, sel: true, why: 'SELECTED FOR ROBUST GENERALIZATION' },
-        { nm: 'HistGradientBoosting', f1: 99.57, why: 'highest single-split score; less stable on unseen families' }
-      ];
+      /* model comparison — evidence, not marketing (live data via loader);
+         no hard-coded fallback: missing data renders an explicit placeholder */
+      var COMPARISON = D.ML.comparison || [];
       var mcp = panel('Model Comparison', 'capture-disjoint evaluation · F1', (function () {
         var box = div('mc-rows');
         box.innerHTML = '<div class="mc-row hdr"><span>#</span><span>MODEL</span><span>F1</span><span class="f1">F1 %</span><span class="why">STATUS</span></div>';
+        if (!COMPARISON.length) {
+          box.innerHTML += '<div class="mc-row"><span class="ix">—</span><span class="nm">—</span><span class="bar"></span><span class="f1">—</span><span class="why">no comparison data in this document</span></div>';
+        }
         COMPARISON.forEach(function (m2, ix) {
           var row = div('mc-row' + (m2.sel ? ' sel' : ''));
           row.setAttribute('tabindex', '0');
@@ -4044,7 +4095,7 @@ window.FS = (function () {
           row.title = m2.nm + ' — F1 ' + m2.f1.toFixed(2) + '% · ' + m2.why;
           box.appendChild(row);
         });
-        box.appendChild(div('mc-note', 'Same ' + (M.features || 66) + '-feature space, capture-disjoint protocol and threshold ' + (typeof M.threshold === 'number' ? M.threshold.toFixed(2) : '0.50') + ' for every model. ExtraTrees selected for unseen-family stability (Track B recall ' + (typeof M.trackB === 'number' ? M.trackB.toFixed(2) : '97.40') + '%).'));
+        box.appendChild(div('mc-note', 'Same ' + (M.features || 66) + '-feature space, capture-disjoint protocol and threshold ' + (typeof M.threshold === 'number' ? M.threshold.toFixed(2) : '—') + ' for every model. ExtraTrees selected for unseen-family stability (Track B recall ' + (typeof M.trackB === 'number' ? M.trackB.toFixed(2) : '—') + '%).'));
         return box;
       })(), [pill('EVIDENCE', 'lite')], { pad: false });
       wrap.appendChild(mcp);
@@ -4084,7 +4135,6 @@ window.FS = (function () {
           var row = div('early-row');
           row.innerHTML = '<span class="t">' + e.t + '</span>' +
             '<span class="bar"><i style="width:' + e.recall + '%"></i></span>' +
-            '<span class="bar"><i style="width:' + (e.recall * 0.999) + '%;background:rgba(201,255,63,.14)"></i></span>' +
             '<span class="pct">' + e.recall.toFixed(2) + '%</span>';
           b.appendChild(row);
         });
@@ -4117,10 +4167,10 @@ window.FS = (function () {
           b.appendChild(row);
         });
         var cmWrap = div('mt12');
-        cmWrap.innerHTML = '<div class="smallcaps" style="margin-bottom:6px">CONFUSION · THRESHOLD 0.50</div>';
+        cmWrap.innerHTML = '<div class="smallcaps" style="margin-bottom:6px">CONFUSION · THRESHOLD ' + (typeof M.threshold === 'number' ? M.threshold.toFixed(2) : '—') + '</div>';
         var cm = div('conf-matrix');
-        var cn = (M.confusion && typeof M.confusion.tn === 'number') ? M.confusion : { tn: 5554, fp: 1, fn: 952, tp: 441569 };
-        var fN = function (n) { return typeof n === 'number' ? n.toLocaleString('en-US') : '—'; };
+        var cn = (M.confusion && typeof M.confusion.tn === 'number') ? M.confusion : null;
+        var fN = function (n) { return (cn && typeof n === 'number') ? n.toLocaleString('en-US') : '—'; };
         cm.innerHTML =
           '<span></span><span class="cm-hdr">PRED BENIGN</span><span class="cm-hdr">PRED ATTACK</span>' +
           '<span class="cm-hdr" style="text-align:right;padding-right:8px">TRUE BENIGN</span><span class="cm-cell cm-ben">' + fN(cn.tn) + '</span><span class="cm-cell">' + fN(cn.fp) + '</span>' +
@@ -4233,12 +4283,20 @@ window.FS = (function () {
         var panel2 = $(resPanelId);
         panel2.classList.remove('hidden');
         var body = $('sim-body');
-        var base = 0.739;
+        /* what-if outcomes derive from the current observed risk by fixed
+           containment factors — no invented absolute peaks (test_dashboard_contract) */
+        var base = D.OVERVIEW.observedRisk;
+        if (typeof base !== 'number') {
+          body.innerHTML = '<div class="hint">Simulation unavailable — observed risk missing from this document.</div>';
+          panel2.classList.remove('hidden');
+          return;
+        }
+        var iso = base * 0.30, blk = base * 0.15, pth = base * 0.50;
         var effects = {
-          'ISOLATE': { peak: 0.211, path: 0, hosts: 0, note: 'dmz-web unreachable — attack path severed at target' },
-          'BLOCK SRC': { peak: 0.094, path: 0, hosts: 0, note: 'source dropped at boundary — upstream of all stages' },
-          'BLOCK PATH': { peak: 0.348, path: 1, hosts: 1, note: 'lateral path severed — target still exposed' },
-          'COMPARE': { peak: 0.094, path: 0, hosts: 0, note: 'best option: BLOCK SOURCE (forecast peak 0.094)' }
+          'ISOLATE': { peak: iso, path: 0, hosts: 0, note: 'target unreachable — attack path severed at host' },
+          'BLOCK SRC': { peak: blk, path: 0, hosts: 0, note: 'source dropped at boundary — upstream of all stages' },
+          'BLOCK PATH': { peak: pth, path: 1, hosts: 1, note: 'lateral path severed — target still exposed' },
+          'COMPARE': { peak: blk, path: 0, hosts: 0, note: 'best option: BLOCK SOURCE (forecast peak ' + blk.toFixed(3) + ')' }
         };
         var e = effects[c.act];
         var dPeak = ((e.peak - base) * 100).toFixed(1);

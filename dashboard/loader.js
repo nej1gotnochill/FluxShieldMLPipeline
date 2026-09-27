@@ -51,6 +51,7 @@ window.FSLOAD = (function () {
     if (!isObj(d)) return null;
     var m = {};
     if (isStr(d.model)) m.model = d.model;
+    if (isNum(d.modelCount) && d.modelCount >= 0) m.modelCount = d.modelCount;
     if (isStr(d.calibration)) m.calibration = d.calibration;
     if (isNum(d.threshold) && d.threshold > 0 && d.threshold < 1) m.threshold = d.threshold;
     if (isNum(d.features) && d.features > 0) m.features = d.features;
@@ -102,6 +103,27 @@ window.FSLOAD = (function () {
         }
       });
       if (cmp.length) m.comparison = cmp;
+    }
+    if (isObj(d.fixtureEval)) {
+      var fe = {};
+      Object.keys(d.fixtureEval).forEach(function (k) {
+        var r = d.fixtureEval[k];
+        if (!isObj(r)) { warn('ml.fixtureEval[' + k + '] skipped'); return; }
+        var by = {};
+        if (isObj(r.alerts_by_class)) {
+          Object.keys(r.alerts_by_class).forEach(function (ck) {
+            if (isNum(r.alerts_by_class[ck])) by[ck] = r.alerts_by_class[ck];
+          });
+        }
+        fe[k] = {
+          expected: r.expected == null ? null : String(r.expected),
+          alerts_by_class: by,
+          total_alerts: isNum(r.total_alerts) ? r.total_alerts : 0,
+          note: isStr(r.note) ? r.note : '',
+          scenario_frames: isNum(r.scenario_frames) ? r.scenario_frames : null
+        };
+      });
+      if (Object.keys(fe).length) m.fixtureEval = fe;
     }
     return Object.keys(m).length ? m : null;
   }
@@ -220,7 +242,8 @@ window.FSLOAD = (function () {
         name: isStr(p.name) ? p.name : p.tid,
         p: clamp01(p.p),
         eta: isStr(p.eta) ? p.eta : '—',
-        conf: isStr(p.conf) ? p.conf : (isNum(p.conf) ? String(p.conf) : '—')
+        conf: isStr(p.conf) ? p.conf : (isNum(p.conf) ? String(p.conf) : '—'),
+        tactic: isStr(p.tactic) ? p.tactic : '—'
       });
     });
     return out.length ? out : null;
@@ -301,7 +324,7 @@ window.FSLOAD = (function () {
         confidence: isNum(a.confidence) ? clamp01(a.confidence) : a.risk,
         risk: clamp01(a.risk),
         window_sec: isNum(a.window_sec) ? a.window_sec : 0,
-        model: isObj(a.model) ? a.model : { name: '—', version: '—', threshold: 0 },
+        model: (isObj(a.model) && isStr(a.model.name)) ? a.model : { name: '—', version: '—', threshold: 0 },
         evidence: isObj(a.evidence) ? a.evidence : {},
         state: isStr(a.state) ? a.state : '—'
       });
