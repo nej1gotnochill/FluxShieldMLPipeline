@@ -24,6 +24,32 @@ No other backend changes are required on the UI side.
 - All UI numbers on these screens come from the streaming service; the UI
   never synthesizes risks, latency, or evaluation results.
 
+## Contract enforcement (tests)
+
+`tests/test_dashboard_contract.py` statically enforces this contract so
+placeholder data cannot silently regress:
+
+1. **build sync** — `index.html` matches the build.py sources (fails if you
+   forget to run `python build.py` after editing app.js/loader.js/…).
+2. **no fabricated metrics** — app.js may not contain hard-coded data
+   literals (the 96.41/99.12/… model-comparison and 0.739/0.953 story-value
+   regressions). Chart-geometry constants are an explicit, documented
+   allowlist. (`data.js` is exempt — fixture demo data is its purpose.)
+3. **merge-map coverage** — every `D.*` section app.js renders must have an
+   entry in the loader's merge map with a real validator; live-only sections
+   (ALERTS, STREAMING) must be read defensively.
+4. **rendered == validated** — every object field app.js reads off a
+   validated section must be emitted by the corresponding validator (reads
+   like `inc.lead` render `undefined` if the validator drops the field).
+5. **placeholders** — missing data renders explicit placeholders, never
+   invented values (checked by anchor strings in app.js).
+6. **data.json ↔ reports** — `data.json`'s `ml.*` sections must equal
+   `ml_data.build()`'s parse of the committed reports (re-run the replay
+   after reports change, or data.json ships stale measurements).
+
+Run with the rest of the suite: `python -m pytest tests/ -q` (stdlib only —
+no JS runtime required).
+
 ## File
 
 `data.json` — written by your pipeline (any language), fetched by the UI at boot.
