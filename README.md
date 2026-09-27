@@ -211,6 +211,7 @@ Summary: [`reports/research_strengthening_summary.md`](reports/research_strength
 NetraMLPipeline/
 ├── README.md · FINAL_ML_SUMMARY.md · LICENSE · requirements.txt · .gitignore
 ├── configs/config.yaml            # DATASET_PATH via env var or this file
+├── configs/streaming.yaml         # every live-path threshold/weight (explicit)
 ├── src/
 │   ├── pcap layer:       inspect_dataset.py · validate_pcap_parser.py
 │   ├── flow extraction:  feature_engineering.py · validate_flows.py · verify_extraction.py
@@ -218,16 +219,58 @@ NetraMLPipeline/
 │   ├── modelling:        preprocessing.py · train.py · tune.py · calibrate.py · evaluate.py
 │   ├── serving:          inference.py · benchmark.py · final_test.py · export_metadata.py
 │   ├── early_detection.py
+│   ├── streaming/        # LIVE/REPLAY multi-threat detection service (additive)
+│   │                     schema · pcap_source · state · windows · metrics · bus ·
+│   │                     detectors · fusion · emit · service · replay
 │   ├── research:         research_utils.py · research_dup_sensitivity.py ·
 │   │                     research_feature_ablation.py · research_error_analysis.py ·
 │   │                     research_threshold_sensitivity.py · research_figures.py
 │   └── common:           config.py · utils.py
-├── tests/                         # 16 tests (pytest)
+├── tests/                         # 16 + 20 streaming tests (pytest)
 ├── models/                        # FROZEN artifacts (5.3 MB joblib + 3 JSON)
 ├── reports/                       # measured reports + feature dictionary + figures/
 ├── experiments/                   # preserved raw records (incl. research/)
 └── docs/                          # methodology · evaluation_protocol · model_card
 ```
+
+## Streaming multi-threat detection (live path)
+
+The offline pipeline above is untouched and remains the training/evaluation
+system of record. The streaming layer (`src/streaming/`) turns it into a
+passive, one-way, multi-threat detection service:
+
+```
+read-only pcap → PcapPacketSource → StreamingFlowEngine (causal windows,
+same Flow/flow_to_row math) → cross-flow Aggregator (bounded TTL state)
+→ detector registry: DDoS (frozen ExtraTrees) · Recon · C2 · DNS/DGA ·
+TLS-metadata · Exfil → ThreatFusion (explicit weights) → AlertEvent
+(bounded bus) → DashboardBridge → dashboard (LIVE/REPLAY/SIMULATED badge)
+```
+
+- **Standardized alerts**: every alert carries timestamp, flow identity,
+  threat class/subtype, confidence, risk, evidence from computed features,
+  and the model identity (name/version/threshold) that produced it.
+- **Model versioning**: the frozen DDoS model is loaded unchanged (t_op
+  from `models/threshold.json`); rule detectors are versioned and DATA-LIMITED.
+- **Read-only & metadata-only**: no return path exists anywhere; DNS/TLS
+  layers read header-grade bytes only; fingerprints that cannot be derived
+  are reported as `fingerprint_unavailable`, never fabricated.
+- **Measured on this machine** (single core, Python): ~5,000 pkt/s sustained
+  replay, end-to-end packet→alert p50 13 ms / p95 36 ms / p99 192 ms;
+  benign-capture flag rate 0.19% (validated extractor parity 0.09% on the
+  same capture).
+
+Replay a capture through the full live path:
+
+```bash
+python -m src.streaming.replay --pcap <capture.pcap> --out data.json --alerts alerts.jsonl
+python dashboard/server.py   # then open the dashboard (badge shows REPLAY DATA)
+```
+
+Known limitation: the streaming layer's per-bucket flow eviction (memory
+guard at 300k tracked flows) can close accumulators slightly earlier than
+the offline extractor's sweep, so benign-capture flag rates differ in the
+third decimal from the offline causal evaluation. This is stated, not hidden.
 
 ## Installation
 

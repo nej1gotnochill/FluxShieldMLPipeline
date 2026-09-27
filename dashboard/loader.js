@@ -305,8 +305,14 @@ window.FSLOAD = (function () {
     /* apply the merged document onto FSDATA in place (app.js holds a
        reference to this object, so reassignment would be invisible) */
     Object.keys(res.data).forEach(function (k) { F[k] = res.data[k]; });
+    /* mode awareness: LIVE / REPLAY / SIMULATED are distinct provenance
+       states and must never be conflated into one 'live' flag. A REPLAY
+       document shows 'REPLAY DATA', not 'LIVE DATA'. */
+    var mode = isObj(doc.meta) && isStr(doc.meta.mode) ? doc.meta.mode.toUpperCase() : 'LIVE';
+    if (mode !== 'LIVE' && mode !== 'REPLAY' && mode !== 'SIMULATED') mode = 'LIVE';
     F.provenance = {
-      live: true,
+      live: mode === 'LIVE',
+      mode: mode,
       source: isObj(doc.meta) && isStr(doc.meta.source) ? doc.meta.source : 'pipeline',
       generatedAt: isObj(doc.meta) && isStr(doc.meta.generated_at) ? doc.meta.generated_at : '—',
       sections: res.applied,
