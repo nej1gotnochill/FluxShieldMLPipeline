@@ -1037,6 +1037,9 @@ body { font-feature-settings:'tnum' 1; }
 .mc-row.sel .bar i { opacity:1; }
 .mc-row .f1 { text-align:right; color:var(--text); }
 .mc-row .why { text-align:right; font-size:10.5px; letter-spacing:1.2px; color:var(--text3); text-transform:uppercase; }
+.mc-rows.six .mc-row { grid-template-columns:minmax(120px,170px) 44px 74px 80px 92px minmax(0,1fr); }
+.mc-rows.six .mc-row .why { text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mc-row .pill { margin-right:6px; }
 .mc-row.sel .why { color:var(--teal-bright); }
 .mc-note { padding:6px 10px 2px; font-family:var(--mono); font-size:11px; color:var(--text3); letter-spacing:.4px; }
 
@@ -1415,6 +1418,25 @@ window.FSLOAD = (function () {
     }
     if (isObj(d.confusion) && isNum(d.confusion.tn) && isNum(d.confusion.fp) && isNum(d.confusion.fn) && isNum(d.confusion.tp)) {
       m.confusion = { tn: d.confusion.tn, fp: d.confusion.fp, fn: d.confusion.fn, tp: d.confusion.tp };
+    }
+    if (isArr(d.registry)) {
+      var reg = [];
+      d.registry.forEach(function (e) {
+        if (isObj(e) && isStr(e.name)) {
+          reg.push({
+            name: e.name,
+            version: isStr(e.version) ? e.version : '—',
+            kind: isStr(e.kind) ? e.kind : 'rule',
+            features: isNum(e.features) && e.features >= 0 ? e.features : 0,
+            calibration: isStr(e.calibration) ? e.calibration : '—',
+            threshold: isNum(e.threshold) ? e.threshold : 0.5,
+            status: e.status === 'degraded' ? 'degraded' : 'ok',
+            last_error: isStr(e.last_error) ? e.last_error : '',
+            evaluation: isStr(e.evaluation) ? e.evaluation : ''
+          });
+        }
+      });
+      if (reg.length) m.registry = reg;
     }
     if (isArr(d.comparison)) {
       var cmp = [];
@@ -4027,6 +4049,32 @@ window.FS = (function () {
       })(), [pill('EVIDENCE', 'lite')], { pad: false });
       wrap.appendChild(mcp);
 
+      /* detector registry — live service state from the streaming registry
+         (kind, operating point, ok/degraded status, last_error, evaluation) */
+      var REG = M.registry || [];
+      var rp = panel('Detector Registry', 'deployed models + rules · version, operating point, health', (function () {
+        var box = div('mc-rows six');
+        box.innerHTML = '<div class="mc-row hdr"><span>DETECTOR</span><span>VER</span><span>TYPE</span><span>THRESHOLD</span><span>STATUS</span><span class="why">EVALUATION</span></div>';
+        if (!REG.length) {
+          box.innerHTML += '<div class="mc-row"><span class="nm">—</span><span>—</span><span>—</span><span>—</span><span>—</span><span class="why">run a replay to populate the registry</span></div>';
+        }
+        REG.forEach(function (d) {
+          var bad = d.status === 'degraded';
+          var row = div('mc-row' + (bad ? ' sel' : ''));
+          row.innerHTML = '<span class="nm">' + esc(d.name) + '</span>' +
+            '<span>' + esc(String(d.version)) + '</span>' +
+            '<span>' + esc(String(d.kind).toUpperCase()) + '</span>' +
+            '<span>' + (isFinite(d.threshold) ? Number(d.threshold).toFixed(2) : '—') + '</span>' +
+            '<span>' + (bad ? '<span class="pill red">DEGRADED</span>' : '<span class="pill green">OK</span>') + '</span>' +
+            '<span class="why">' + esc(d.evaluation || '—') + '</span>';
+          if (d.last_error) row.title = 'last error: ' + d.last_error;
+          box.appendChild(row);
+        });
+        box.appendChild(div('mc-note', (M.modelCount || REG.length) + ' detectors registered · status and last_error are live service state · full health strip on the Detectors screen.'));
+        return box;
+      })(), [pill(String(REG.length || (M.modelCount || 0)), 'lite')], { pad: false });
+      wrap.appendChild(rp);
+
       var grid = div('grid2 mt12');
 
       /* early detection */
@@ -4591,7 +4639,7 @@ window.FS = (function () {
 
       /* detector registry table — status/last_error are real service state */
       var tbl = panel('Detector Registry', 'name · version · operating point · measured evaluation', (function () {
-        var box = div('mc-rows');
+        var box = div('mc-rows six');
         box.innerHTML = '<div class="mc-row hdr"><span>DETECTOR</span><span>VER</span><span>TYPE</span><span>THRESHOLD</span><span>STATUS</span><span class="why">EVALUATION</span></div>';
         if (!dets.length) {
           box.innerHTML += '<div class="mc-row"><span class="nm">—</span><span>—</span><span>—</span><span>—</span><span>—</span><span class="why">run a replay to populate the registry</span></div>';

@@ -1025,6 +1025,9 @@ body { font-feature-settings:'tnum' 1; }
 .mc-row.sel .bar i { opacity:1; }
 .mc-row .f1 { text-align:right; color:var(--text); }
 .mc-row .why { text-align:right; font-size:10.5px; letter-spacing:1.2px; color:var(--text3); text-transform:uppercase; }
+.mc-rows.six .mc-row { grid-template-columns:minmax(120px,170px) 44px 74px 80px 92px minmax(0,1fr); }
+.mc-rows.six .mc-row .why { text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mc-row .pill { margin-right:6px; }
 .mc-row.sel .why { color:var(--teal-bright); }
 .mc-note { padding:6px 10px 2px; font-family:var(--mono); font-size:11px; color:var(--text3); letter-spacing:.4px; }
 
