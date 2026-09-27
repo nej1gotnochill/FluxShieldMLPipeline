@@ -1,0 +1,72 @@
+{
+  "benign": {
+    "expected": null,
+    "alerts_by_class": {
+      "C2": 1
+    },
+    "total_alerts": 1,
+    "note": "mixed benign web/dns traffic (deterministic rng, unpatterned)",
+    "scenario_frames": 1737
+  },
+  "c2": {
+    "expected": "C2",
+    "alerts_by_class": {
+      "C2": 3
+    },
+    "total_alerts": 3,
+    "note": "perfect 30s beacon to one unicast destination",
+    "scenario_frames": 10
+  },
+  "dga": {
+    "expected": "DGA",
+    "alerts_by_class": {
+      "DGA": 1
+    },
+    "total_alerts": 1,
+    "note": "high-entropy unique subdomains under one domain",
+    "scenario_frames": 12
+  },
+  "tunnel": {
+    "expected": "DGA",
+    "alerts_by_class": {
+      "DGA": 1
+    },
+    "total_alerts": 1,
+    "note": "long TXT-label DNS tunneling over one channel domain",
+    "scenario_frames": 10
+  },
+  "scan": {
+    "expected": "RECON",
+    "alerts_by_class": {
+      "RECON": 1
+    },
+    "total_alerts": 1,
+    "note": "sequential SYN port scan, single host",
+    "scenario_frames": 30
+  },
+  "exfil": {
+    "expected": "EXFIL",
+    "alerts_by_class": {
+      "EXFIL": 1
+    },
+    "total_alerts": 1,
+    "note": "large one-way upload to many rare destinations",
+    "scenario_frames": 12
+  },
+  "tls_rep": {
+    "expected": "ENCRYPTED_MALWARE",
+    "alerts_by_class": {
+      "ENCRYPTED_MALWARE": 1
+    },
+    "total_alerts": 1,
+    "note": "identical cleartext ClientHello repeated",
+    "scenario_frames": 8
+  },
+  "real_benign_capture": {
+    "expected": null,
+    "alerts_by_class": {},
+    "total_alerts": 0,
+    "note": "real benign capture httperf_2nd.pcap (FPR side)",
+    "scenario_frames": null
+  }
+}

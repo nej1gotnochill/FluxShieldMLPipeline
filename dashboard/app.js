@@ -2137,7 +2137,7 @@
     b.textContent = mode === 'REPLAY' ? 'REPLAY DATA'
       : mode === 'SIMULATED' ? 'SIMULATED DATA'
       : mode === 'LIVE' ? 'LIVE DATA' : 'SIMULATED';
-    b.title = P.live
+    b.title = (mode === 'LIVE' || mode === 'REPLAY' || mode === 'SIMULATED')
       ? 'Pipeline data (' + mode + ') · source: ' + P.source + ' · generated ' + P.generatedAt + (P.errors.length ? ' · fallbacks: ' + P.errors.join('; ') : '')
       : 'No pipeline data.json found — displaying built-in simulation fixtures';
     host.insertBefore(b, host.firstChild);
@@ -2153,8 +2153,9 @@
       ['attack', 'ATT&CK', '\u276F'], ['replay', 'Replay', '\u276F'],
       ['incidents', 'Incidents', '\u276F'], ['events', 'Events', '\u276F'],
       ['model', 'Model', '\u276F'], ['controls', 'Controls', '\u276F'],
+      ['alerts', 'Alerts', '\\u276F'], ['detectors', 'Detectors', '\\u276F'],
       /* section headers rendered between items (index -> label) */
-      ['__sec__', 'OPS', null, 1], ['__sec__', 'EXPLORE', null, 4], ['__sec__', 'WORKSPACE', null, 8], ['__sec__', 'SYSTEM', null, 11]
+      ['__sec__', 'OPS', null, 1], ['__sec__', 'EXPLORE', null, 4], ['__sec__', 'WORKSPACE', null, 8], ['__sec__', 'SYSTEM', null, 11], ['__sec__', 'DETECTION', null, 12]
     ];
     var secMap = {};
     items.filter(function (it) { return it[0] === '__sec__'; }).forEach(function (s) { secMap[s[3]] = s[1]; });
@@ -2473,6 +2474,178 @@
   renderScreen = function () { _origRender(); if (S.screen === 'overview' && !fieldRAF) fieldRAF = requestAnimationFrame(fieldDraw); };
 
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  /* =====================================================
+     13 DETECTORS  (streaming detector registry + live health)
+     ===================================================== */
+  SCREENS.detectors = {
+    title: 'Detectors',
+    build: function (root) {
+      var wrap = div('pad');
+      var ST = D.STREAMING || {};
+      var dets = ST.detectors || [];
+
+      /* live health strip — from streaming.metrics only (no invented numbers) */
+      var m = (ST.metrics || {});
+      var lat = (m.latency && m.latency.end_to_end) || {};
+      var strip = div('panel');
+      var cells = [
+        { k: 'PACKETS', v: m.packets_parsed != null ? m.packets_parsed.toLocaleString() : '—', s: 'parsed this document' },
+        { k: 'FLOWS', v: m.flows_scored != null ? m.flows_scored.toLocaleString() : '—', s: 'closed flows scored' },
+        { k: 'ALERTS', v: m.alerts_emitted != null ? m.alerts_emitted.toLocaleString() : '—',
+          s: (m.alerts_dropped ? (m.alerts_dropped + ' dropped') : '0 dropped') },
+        { k: 'E2E P50', v: lat.p50_ms != null ? lat.p50_ms + ' ms' : '—', s: 'packet → alert' },
+        { k: 'E2E P95', v: lat.p95_ms != null ? lat.p95_ms + ' ms' : '—', s: 'bounded streaming latency' },
+        { k: 'E2E P99', v: lat.p99_ms != null ? lat.p99_ms + ' ms' : '—', s: 'tail' },
+        { k: 'THROUGHPUT', v: m.packets_per_sec != null ? m.packets_per_sec.toLocaleString() + ' pkt/s' : '—', s: 'sustained replay' }
+      ];
+      var ms = div('ml-strip');
+      cells.forEach(function (c) {
+        ms.innerHTML += '<div class="cell"><div class="k">' + esc(c.k) + '</div><div class="v">' + esc(c.v) + '</div><div class="s">' + esc(c.s) + '</div></div>';
+      });
+      strip.appendChild(ms);
+      wrap.appendChild(strip);
+
+      /* detector registry table — status/last_error are real service state */
+      var tbl = panel('Detector Registry', 'name · version · operating point · measured evaluation', (function () {
+        var box = div('mc-rows');
+        box.innerHTML = '<div class="mc-row hdr"><span>DETECTOR</span><span>VER</span><span>TYPE</span><span>THRESHOLD</span><span>STATUS</span><span class="why">EVALUATION</span></div>';
+        if (!dets.length) {
+          box.innerHTML += '<div class="mc-row"><span class="nm">—</span><span>—</span><span>—</span><span>—</span><span>—</span><span class="why">run a replay to populate the registry</span></div>';
+        }
+        dets.forEach(function (d) {
+          var row = div('mc-row' + (d.status === 'degraded' ? ' sel' : ''));
+          row.innerHTML = '<span class="nm">' + esc(d.name) + '</span>' +
+            '<span>' + esc(String(d.version)) + '</span>' +
+            '<span>' + esc(String(d.kind).toUpperCase()) + '</span>' +
+            '<span>' + (isFinite(d.threshold) ? Number(d.threshold).toFixed(2) : '—') + '</span>' +
+            '<span>' + (d.status === 'degraded' ? '<span class="pill red">DEGRADED</span>' : '<span class="pill green">OK</span>') + '</span>' +
+            '<span class="why">' + esc(d.evaluation || '—') + '</span>';
+          if (d.last_error) row.title = 'last error: ' + d.last_error;
+          box.appendChild(row);
+        });
+        box.appendChild(div('mc-note', 'Rule detectors are evidence-gated and DATA-LIMITED: their scenario-level evaluation is measured on synthetic fixtures plus a real benign capture (reports/streaming_fixture_evaluation.md). The DDoS detector keeps its published capture-disjoint protocol.'));
+        return box;
+      })(), [pill('REGISTRY', 'lite')], { pad: false });
+      wrap.appendChild(tbl);
+
+      /* fixture evaluation table (from ml.fixtureEval — measured, labelled) */
+      var FE = (D.ML && D.ML.fixtureEval) || null;
+      var fePanel = panel('Fixture Evaluation', 'synthetic scenarios + real benign capture · scenario-level', (function () {
+        var box = div('panel-bd');
+        if (!FE || typeof FE !== 'object') {
+          box.innerHTML = '<div class="hint">No fixture-evaluation data in this document. Generate it with <span class="mono">python -m src.streaming.evaluate</span> and re-run the replay.</div>';
+          return box;
+        }
+        var rows = '<div class="mc-row hdr"><span>SCENARIO</span><span>EXPECTED</span><span>ALERTS</span><span class="why">VERDICT</span></div>';
+        Object.keys(FE).forEach(function (name) {
+          var r = FE[name] || {};
+          var by = r.alerts_by_class || {};
+          var keys = Object.keys(by);
+          var byS = keys.length ? keys.map(function (k) { return k + ':' + by[k]; }).join(' ') : 'none';
+          var verdict = r.expected == null
+            ? (keys.length ? 'FP ' + (r.total_alerts || 0) : 'PASS')
+            : (by[r.expected] > 0 && keys.filter(function (k) { return k !== r.expected; }).length === 0 ? 'PASS' : 'CHECK');
+          rows += '<div class="mc-row"><span class="nm">' + esc(name) + '</span>' +
+            '<span>' + esc(String(r.expected || '—')) + '</span>' +
+            '<span>' + esc(byS) + '</span>' +
+            '<span class="why">' + esc(verdict) + '</span></div>';
+        });
+        box.innerHTML = '<div class="mc-rows" style="border:none">' + rows + '</div>' +
+          '<div class="hint mt12">Fixtures are synthetic; the benign row uses a real DDoS-AT-2022 capture. Detection is scenario-level (did the class fire), not flow-level precision/recall.</div>';
+        return box;
+      })(), [pill('EVIDENCE', 'lite')], { pad: true });
+      wrap.appendChild(fePanel);
+      root.appendChild(wrap);
+    }
+  };
+
+  /* =====================================================
+     14 ALERTS  (full AlertEvent stream + evidence viewer)
+     ===================================================== */
+  var CLASS_COLOR = { DDOS: 'amber', C2: 'green', DGA: 'lite', ENCRYPTED_MALWARE: 'red', RECON: 'lite', EXFIL: 'red' };
+  SCREENS.alerts = {
+    title: 'Alerts',
+    build: function (root) {
+      var wrap = div('pad');
+      var alerts = D.ALERTS || [];
+      if (!S.alertsFilter) S.alertsFilter = 'ALL';
+      var shown = alerts.filter(function (a) {
+        return S.alertsFilter === 'ALL' || a.threat_class === S.alertsFilter;
+      });
+
+      /* filter strip with per-class counts (computed from the real stream) */
+      var counts = {};
+      alerts.forEach(function (a) { counts[a.threat_class] = (counts[a.threat_class] || 0) + 1; });
+      var fstrip = div('panel');
+      var fbody = div('ml-strip');
+      ['ALL'].concat(Object.keys(counts).sort()).forEach(function (k) {
+        fbody.innerHTML += '<div class="cell' + (S.alertsFilter === k ? ' sel' : '') + '" style="cursor:pointer" data-fk="' + esc(k) + '">' +
+          '<div class="k">' + esc(k) + '</div><div class="v">' + (counts[k] || (k === 'ALL' ? alerts.length : 0)) + '</div><div class="s">' + (k === 'ALL' ? 'all classes' : 'filter') + '</div></div>';
+      });
+      fstrip.appendChild(fbody);
+      wrap.appendChild(fstrip);
+      qsa('[data-fk]', fstrip).forEach(function (c) {
+        c.onclick = function () { S.alertsFilter = c.dataset.fk; renderScreen(); };
+      });
+
+      /* alert rows */
+      var list = panel('Alert Stream', 'newest first · full AlertEvent records', (function () {
+        var box = div();
+        if (!shown.length) {
+          box.innerHTML = '<div class="hint">No alerts' + (S.alertsFilter !== 'ALL' ? ' for class ' + esc(S.alertsFilter) : '') + ' in this document.</div>';
+          return box;
+        }
+        shown.slice(0, 120).forEach(function (a) {
+          var row = div('feed-row');
+          row.style.cursor = 'pointer';
+          var ts = (a.timestamp || '—').replace('T', ' ').slice(0, 23);
+          row.innerHTML = '<span class="ts">' + esc(ts) + '</span>' +
+            '<span>' + pill(a.threat_class, CLASS_COLOR[a.threat_class] || 'lite') + ' ' +
+            esc(a.subtype) + ' · risk ' + a.risk.toFixed(3) + ' · conf ' + a.confidence.toFixed(3) +
+            ' · ' + esc(a.src) + ' → ' + esc(a.dst || '—') + ' · ' + esc(a.model.name) + ' v' + esc(a.model.version) + '</span>';
+          row.onclick = function () {
+            toast('Evidence · ' + a.event_id,
+              JSON.stringify(a.evidence).slice(0, 220), a.risk >= 0.8 ? 'red' : '');
+          };
+          row.title = 'click for evidence JSON';
+          box.appendChild(row);
+        });
+        if (shown.length > 120) box.appendChild(div('hint', (shown.length - 120) + ' older alerts not shown'));
+        return box;
+      })(), [pill(String(shown.length), 'lite')], { pad: false });
+      wrap.appendChild(list);
+
+      /* evidence explorer: expandable full evidence for the newest alert of each class */
+      var evPanel = panel('Evidence Explorer', 'newest alert per class · full evidence dict', (function () {
+        var box = div('panel-bd');
+        var seen = {};
+        var latest = [];
+        for (var i = 0; i < alerts.length && latest.length < 6; i++) {
+          if (!seen[alerts[i].threat_class]) { seen[alerts[i].threat_class] = 1; latest.push(alerts[i]); }
+        }
+        if (!latest.length) {
+          box.innerHTML = '<div class="hint">No alerts in this document yet.</div>';
+          return box;
+        }
+        latest.forEach(function (a) {
+          var card = div('panel mt12');
+          var hd = div('panel-hd');
+          hd.innerHTML = '<div class="t">' + esc(a.threat_class) + ' <span class="sub">· ' + esc(a.subtype) + ' · risk ' + a.risk.toFixed(3) + ' · ' + esc(a.model.name) + '</span></div>';
+          card.appendChild(hd);
+          var pre = div('panel-bd');
+          var ev = JSON.stringify(a.evidence, null, 2);
+          if (ev.length > 1600) ev = ev.slice(0, 1600) + '\n… (truncated)';
+          pre.innerHTML = '<pre class="mono" style="white-space:pre-wrap;font-size:11px;color:#b7bdb2;margin:0">' + esc(ev) + '</pre>';
+          card.appendChild(pre);
+          box.appendChild(card);
+        });
+        return box;
+      })(), null);
+      wrap.appendChild(evPanel);
+      root.appendChild(wrap);
+    }
+  };
 
   /* ---- live polling updates (fired by loader after a changed re-fetch) ---- */
   document.addEventListener('fs:data', function (ev) {

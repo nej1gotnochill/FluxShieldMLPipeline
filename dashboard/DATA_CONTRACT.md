@@ -3,6 +3,27 @@
 The dashboard reads a single JSON document. Your ML pipeline writes it; the UI renders it.
 No other backend changes are required on the UI side.
 
+## Streaming sections (v1 additions)
+
+- `meta.mode` — `LIVE` | `REPLAY` | `SIMULATED`. Drives the provenance badge
+  (`LIVE DATA` / `REPLAY DATA` / `SIMULATED DATA`); never conflate these.
+- `alerts` — full AlertEvent records from the streaming service, newest-last:
+  `{event_id, timestamp, flow_id, src, dst, sport, dport, proto, threat_class,
+  subtype, prediction, confidence, risk, window_sec, model{name,version,threshold},
+  evidence{}, state}`. Rendered by the **Alerts** screen (filter strip, alert
+  stream, evidence explorer). Schema is enforced server-side.
+- `streaming` — live service health: `{metrics{...counters, flows_per_sec,
+  packets_per_sec, latency{feature_update|detector|alert_emit|end_to_end each
+  {p50_ms,p95_ms,p99_ms}}}, detectors[{name, version, kind, threshold,
+  calibration, status, last_error, evaluation}]}`. Rendered by the
+  **Detectors** screen (health strip + registry table). `status` and
+  `last_error` are real service state, not decorations.
+- `ml.fixtureEval` — scenario-level evaluation of the rule detectors
+  (synthetic fixtures + real benign FPR) as produced by
+  `src/streaming/evaluate.py`; displayed on the Detectors screen.
+- All UI numbers on these screens come from the streaming service; the UI
+  never synthesizes risks, latency, or evaluation results.
+
 ## File
 
 `data.json` — written by your pipeline (any language), fetched by the UI at boot.

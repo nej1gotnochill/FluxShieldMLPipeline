@@ -252,6 +252,75 @@ window.FSLOAD = (function () {
     return Object.keys(c).length ? c : null;
   }
 
+  /* full AlertEvent records from the streaming service (evidence viewer);
+     passthrough with minimal structural validation — the schema itself is
+     enforced server-side by schema.AlertEvent */
+  function vAlerts(d) {
+    if (!isArr(d) || !d.length) return null;
+    var out = [];
+    for (var i = d.length - 1; i >= 0 && out.length < 300; i--) {
+      var a = d[i];
+      if (!isObj(a) || !isStr(a.threat_class) || !isNum(a.risk)) {
+        warn('alerts[' + i + '] skipped');
+        continue;
+      }
+      out.push({
+        event_id: isStr(a.event_id) ? a.event_id : '—',
+        timestamp: isStr(a.timestamp) ? a.timestamp : '—',
+        flow_id: isStr(a.flow_id) ? a.flow_id : '—',
+        src: isStr(a.src) ? a.src : '—',
+        dst: isStr(a.dst) ? a.dst : '—',
+        sport: isNum(a.sport) ? a.sport : 0,
+        dport: isNum(a.dport) ? a.dport : 0,
+        proto: isStr(a.proto) ? a.proto : '—',
+        threat_class: a.threat_class,
+        subtype: isStr(a.subtype) ? a.subtype : '—',
+        prediction: isStr(a.prediction) ? a.prediction : '—',
+        confidence: isNum(a.confidence) ? clamp01(a.confidence) : a.risk,
+        risk: clamp01(a.risk),
+        window_sec: isNum(a.window_sec) ? a.window_sec : 0,
+        model: isObj(a.model) ? a.model : { name: '—', version: '—', threshold: 0 },
+        evidence: isObj(a.evidence) ? a.evidence : {},
+        state: isStr(a.state) ? a.state : '—'
+      });
+    }
+    return out.length ? out : null;
+  }
+
+  /* streaming service health: latency/throughput metrics + detector status */
+  function vStreaming(d) {
+    if (!isObj(d)) return null;
+    var out = {};
+    if (isObj(d.metrics)) {
+      var m = d.metrics, mm = {};
+      ['events_received','packets_parsed','flows_scored','alerts_emitted',
+       'alerts_dropped','detector_errors','degraded_mode','peak_queue_depth',
+       'peak_state_size','flows_per_sec','packets_per_sec'].forEach(function (k) {
+        if (isNum(m[k])) mm[k] = m[k];
+      });
+      if (isObj(m.latency)) mm.latency = m.latency;
+      out.metrics = mm;
+    }
+    if (isArr(d.detectors)) {
+      var det = [];
+      d.detectors.forEach(function (x, i) {
+        if (!isObj(x) || !isStr(x.name)) { warn('streaming.detectors[' + i + '] skipped'); return; }
+        det.push({
+          name: x.name,
+          version: isStr(x.version) ? x.version : '—',
+          kind: isStr(x.kind) ? x.kind : 'rule',
+          threshold: isNum(x.threshold) ? x.threshold : 0,
+          calibration: isStr(x.calibration) ? x.calibration : '—',
+          status: x.status === 'degraded' ? 'degraded' : 'ok',
+          last_error: isStr(x.last_error) ? x.last_error : '',
+          evaluation: isStr(x.evaluation) ? x.evaluation : '—'
+        });
+      });
+      if (det.length) out.detectors = det;
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
   /* ---------- merge + boot ---------- */
 
   function merge(fix, live) {
@@ -267,7 +336,9 @@ window.FSLOAD = (function () {
       ['PREDICTIONS', 'predictions', vPredictions],
       ['STATE_VECTOR', 'stateVector', vStateVector],
       ['ATTACK',      'attack',      vAttack],
-      ['CAMPAIGN',    'campaign',    vCampaign]
+      ['CAMPAIGN',    'campaign',    vCampaign],
+      ['ALERTS',      'alerts',      vAlerts],
+      ['STREAMING',   'streaming',   vStreaming]
     ];
     var out = {};
     /* always seed from the pristine fixture snapshot — never from current

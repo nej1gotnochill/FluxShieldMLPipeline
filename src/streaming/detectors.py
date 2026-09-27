@@ -107,6 +107,12 @@ class HostWindow:           # per (host, window) exfil state
     out_flows: int = 0
 
 
+@dataclass(slots=True)
+class SrcMix:               # per-bucket source packet distribution (DDoS entropy)
+    counts: dict = field(default_factory=dict)   # src_ip -> packets
+    packets: int = 0
+
+
 def _is_multicast_or_broadcast(ip: str) -> bool:
     """IPv4 multicast (224.0.0.0/4) or broadcast (last octet 255)."""
     try:
@@ -114,6 +120,12 @@ def _is_multicast_or_broadcast(ip: str) -> bool:
         return len(o) == 4 and (224 <= o[0] <= 239 or o[3] == 255)
     except (ValueError, AttributeError):
         return False
+
+
+def flows_dense(fanout: int, flows: int) -> bool:
+    """True when a fan-out dimension is saturated by real traffic (>= 5 flows
+    per fan-out unit) — usage, not scanning."""
+    return flows >= 5 * max(fanout, 1)
 
 
 class Aggregator:
@@ -173,12 +185,50 @@ class Aggregator:
             hw.out_flows += 1
             return hw
         self.store.update("exfil", (fe.src_ip, b), _u3, HostWindow)
+        # ---- DDoS entropy: per-bucket source packet distribution (bounded:
+        # per-bucket entry, pruned with the bucket) — feeds source-IP
+        # entropy evidence required by the brief's volumetric class.
+        # Window-kind closures only: terminal closures re-count the same
+        # packets (they are the lagged counterpart of window closures),
+        # which would distort the distribution.
+        if fe.kind == "window":
+            def _u4(mix: SrcMix) -> SrcMix:
+                mix.counts[fe.src_ip] = mix.counts.get(fe.src_ip, 0) + fe.n_packets
+                mix.packets += fe.n_packets
+                return mix
+            self.store.update("srcmix", b, _u4, SrcMix, ttl_sec=self.window_sec * 3)
 
     def roll_window(self) -> float | None:
         """Return and advance the completed bucket, if one is complete."""
         if self.current_bucket is None:
             return None
         return self.current_bucket - self.window_sec
+
+    def source_mix_stats(self, bucket: float) -> dict | None:
+        """Source-IP entropy statistics for one aggregation bucket.
+
+        Shannon entropy (bits) over the per-source packet distribution plus
+        uniqueness/concentration — the volumetric-class evidence the brief
+        names explicitly (spoofed floods spread packets across many source
+        addresses, driving entropy up while staying concentrated by bytes)."""
+        mix = self.store.get("srcmix", bucket)
+        if not mix or mix.packets <= 0 or not mix.counts:
+            return None
+        n = mix.packets
+        ent = 0.0
+        for c in mix.counts.values():
+            if c > 0:
+                p = c / n
+                ent -= p * math.log2(p)
+        top_src, top_c = max(mix.counts.items(), key=lambda kv: kv[1])
+        return {
+            "src_ip_entropy_bits": round(ent, 4),
+            "max_entropy_bits": round(math.log2(len(mix.counts)), 4) if len(mix.counts) > 1 else 0.0,
+            "unique_source_ips": len(mix.counts),
+            "bucket_packets": n,
+            "top_source": top_src,
+            "top_source_packet_share": round(top_c / n, 4),
+        }
 
 
 # ---------------------------------------------------------------------- #
@@ -497,9 +547,12 @@ class TLSMetaDetector(BaseDetector, ModelIdentified):
             return
         try:
             ver = f"{p[9]}.{p[10]}"
-            rest = 43                            # fixed ClientHello header
-            sid_len = p[rest + 1] | (p[rest] << 8)
-            off = rest + 2 + sid_len
+            # ClientHello body (after 5B record hdr + 4B handshake hdr):
+            #   2B version | 32B random | 1B sid_len | sid | 2B cs_len |
+            #   ciphers | 1B comp_len | comp | 2B ext_len | extensions
+            base = 9 + 2 + 32
+            sid_len = p[base]
+            off = base + 1 + sid_len
             cs_len = p[off + 1] | (p[off] << 8)
             ciphers = p[off + 2:off + 2 + cs_len]
             off += 2 + cs_len
@@ -541,10 +594,10 @@ class TLSMetaDetector(BaseDetector, ModelIdentified):
                 "note": "handshake metadata only; no decryption performed",
             }
             # repetition of one fingerprint toward few destinations is the
-            # observable; scoring is deliberately conservative (DATA-LIMITED).
-            # A result is always surfaced for observability; it only becomes
-            # alert-active at the detector floor — never fabricated higher.
-            score = 0.4 if (avail and uniq == 1 and len(sess) >= 2 * self.min_sessions) else 0.0
+            # observable; conservative two-level scoring (DATA-LIMITED):
+            #   0.6 SUSPICIOUS — one repeated fingerprint, >= 2*min_sessions
+            #   0.0 informational otherwise (surfaced for observability only)
+            score = 0.6 if (avail and uniq == 1 and len(sess) >= 2 * self.min_sessions) else 0.0
             if len(sess) >= self.min_sessions:
                 ev["method"] = "cleartext-handshake repetition (rule, DATA-LIMITED)"
                 res = self.result(score, ev, subtype="TLS_CLIENT_REP",
@@ -581,9 +634,15 @@ class ReconDetector(BaseDetector, ModelIdentified):
         ports, hosts = len(sw.dst_ports), len(sw.dst_ips)
         syn_ratio = sw.syn_only / max(sw.flows, 1)
         rst_ratio = sw.rst_seen / max(sw.flows, 1)
+        # Flow-density gate: a scanner sends ~1 flow per port/host; a busy
+        # legitimate client sends many flows to each. A fan-out dimension
+        # saturated by real traffic (flows >= 5x the fan-out) is usage, not
+        # scanning, and contributes no score.
+        port_component = ports / (self.port_fanout * 4) if flows_dense(ports, sw.flows) else 0.0
+        host_component = hosts / (self.host_fanout * 4) if flows_dense(hosts, sw.flows) else 0.0
         score = min(1.0, max(
-            ports / (self.port_fanout * 4),
-            hosts / (self.host_fanout * 4),
+            port_component,
+            host_component,
             0.55 if (syn_ratio > 0.8 and ports >= self.port_fanout) else 0.0,
         ))
         if score < self.suspicious_floor:
@@ -624,11 +683,13 @@ class ExfilDetector(BaseDetector, ModelIdentified):
             return None                      # behavioural baseline: ignore small transfers
         ratio = hw.bytes_out / max(hw.bytes_in, 1)
         dst_uniq = len(hw.dst_ips)
-        score = 0.0
-        if ratio >= self.out_ratio and dst_uniq >= self.min_dst:
-            score = min(1.0, 0.5 + 0.5 * min(ratio / (self.out_ratio * 4), 1.0))
-        elif ratio >= self.out_ratio:
-            score = min(0.6, 0.3 + 0.3 * min(ratio / (self.out_ratio * 4), 1.0))
+        # Behavioral baselining (brief: never label every high-volume outbound
+        # flow as exfiltration). Asymmetry ALONE is normal (web/DNS servers,
+        # download clients); exfiltration requires asymmetry AND destination
+        # diversity (rarity). Single-destination asymmetry is informational 0.
+        if ratio < self.out_ratio or dst_uniq < self.min_dst:
+            return None
+        score = min(1.0, 0.5 + 0.5 * min(ratio / (self.out_ratio * 4), 1.0))
         if score < self.suspicious_floor:
             return None
         return self.result(score, {
