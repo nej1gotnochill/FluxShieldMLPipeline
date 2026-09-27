@@ -32,10 +32,19 @@ import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+if os.path.isdir(os.path.join(HERE, "..", "src", "streaming")):
+    sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "src", "streaming")))
+try:
+    from emit import (INCIDENT_STATUSES, apply_incident_status, _load_statuses,
+                      _save_statuses)  # noqa: E402  (shared workflow rules)
+except ImportError:  # dashboard deployed standalone: static serving only
+    INCIDENT_STATUSES = ()
+    apply_incident_status = None
 AUDIT_PATH = os.path.join(HERE, "audit.log")
 ALLOWED_EXT = {".html", ".css", ".js", ".json", ".png", ".svg", ".ico",
                ".woff2", ".woff", ".map"}
 SUSPICIOUS = ("..", "<", ">", "|", "&", "$(", "`", "${")
+MAX_BODY = 4096
 
 TOKEN = os.environ.get("NETRA_DASH_TOKEN", "")
 CORS_ORIGINS = [o.strip() for o in os.environ.get("NETRA_DASH_CORS", "").split(",") if o.strip()]
@@ -80,8 +89,23 @@ class HardenedHandler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     # ---------------- auth + validation gate ---------------- #
+    def _auth_ok(self, path: str) -> bool:
+        """Bearer auth (opt-in), shared by GET and the incident API."""
+        if TOKEN:
+            auth = self.headers.get("Authorization", "")
+            if auth != f"Bearer {TOKEN}":
+                audit("AUTH_FAIL", client=self.client_address[0], path=path)
+                self.send_response(401)
+                self.send_header("WWW-Authenticate", "Bearer")
+                self.send_header("Content-Type", " application/json")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return False
+        return True
+
     def _check(self) -> bool:
-        # method gate (control-plane separation: read-only telemetry only)
+        # method gate (control-plane separation: read-only telemetry only;
+        # the single sanctioned writer is POST /api/incident, see do_POST)
         if self.command not in ("GET", "HEAD"):
             self._json(405, {"error": "method not allowed"})
             return False
@@ -96,18 +120,7 @@ class HardenedHandler(SimpleHTTPRequestHandler):
         if ext and ext not in ALLOWED_EXT and path not in ("/", "/index.html"):
             self._json(404, {"error": "not found"})
             return False
-        # bearer auth (opt-in)
-        if TOKEN:
-            auth = self.headers.get("Authorization", "")
-            if auth != f"Bearer {TOKEN}":
-                audit("AUTH_FAIL", client=self.client_address[0], path=path)
-                self.send_response(401)
-                self.send_header("WWW-Authenticate", "Bearer")
-                self.send_header("Content-Type", " application/json")
-                self.send_header("Content-Length", "0")
-                self.end_headers()
-                return False
-        return True
+        return self._auth_ok(path)
 
     def _json(self, code: int, body: dict) -> None:
         blob = json.dumps(body).encode()
@@ -129,14 +142,98 @@ class HardenedHandler(SimpleHTTPRequestHandler):
     def do_HEAD(self):
         self.do_GET()
 
+    # ---------------- analyst decisions: POST /api/incident ---------------- #
+    # The one sanctioned writer. Records an analyst DECISION about an
+    # incident (acknowledge/contain/close) — never a network command; the
+    # deployment stays passive/one-way. The status lives in data.json (so
+    # every poll sees it) and in incident_status.json (so the next emit
+    # re-applies it). Validation uses the CURRENT data.json row: ids are
+    # reassigned per replay run, so a stale client cannot flip an incident
+    # that no longer exists in the recorded state.
     def do_POST(self):
         t0 = time.perf_counter()
-        self._json(405, {"error": "read-only telemetry plane; commands not accepted"})
-        self._audit_line(t0)
+        path = self.path.split("?", 1)[0]
+        try:
+            if path != "/api/incident":
+                self._json(404, {"error": "not found"})
+                return
+            if apply_incident_status is None:
+                self._json(501, {"error": "incident workflow unavailable "
+                                       "(emit module not found)"})
+                return
+            if not self._auth_ok(path):
+                return
+            origin = self.headers.get("Origin")
+            if origin and CORS_ORIGINS and origin not in CORS_ORIGINS:
+                self._json(403, {"error": "origin not allowed"})
+                return
+            try:
+                n = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                n = -1
+            if not 0 < n <= MAX_BODY:
+                self._json(400, {"error": "invalid body size"})
+                return
+            try:
+                req = json.loads(self.rfile.read(n).decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                self._json(400, {"error": "invalid JSON"})
+                return
+            if not isinstance(req, dict) or set(req) - {"id", "status", "analyst"}:
+                self._json(400, {"error": "expected {id, status[, analyst]}"})
+                return
+            inc_id, target = str(req.get("id", "")), str(req.get("status", ""))
+            if not inc_id or target not in INCIDENT_STATUSES:
+                self._json(400, {"error": "invalid id or status"})
+                return
+            doc_path = os.path.join(HERE, "data.json")
+            try:
+                with open(doc_path, encoding="utf-8") as fh:
+                    doc = json.load(fh)
+            except (OSError, ValueError):
+                self._json(409, {"error": "data.json unavailable"})
+                return
+            row = next((i for i in doc.get("incidents", [])
+                        if isinstance(i, dict) and i.get("id") == inc_id), None)
+            if row is None:
+                self._json(404, {"error": f"unknown incident {inc_id} "
+                                       "(stale view? reload)"})
+                return
+            statuses = _load_statuses(doc_path)
+            ok, new_status = apply_incident_status(
+                statuses, inc_id, str(row.get("status", "TRIAGING")), target)
+            if not ok:
+                audit("INCIDENT_REJECT", client=self.client_address[0],
+                      id=inc_id, frm=row.get("status"), to=target)
+                self._json(409, {"error": f"cannot move {inc_id} from "
+                                       f"{row.get('status')} to {target}"})
+                return
+            row["status"] = new_status
+            analysts = None
+            if isinstance(req.get("analyst"), str) and req["analyst"].strip():
+                analysts = {inc_id: req["analyst"].strip()[:40]}
+                row["analyst"] = analysts[inc_id]
+            from emit import (_atomic_write_json, load_incident_analysts,
+                              save_incident_analysts)
+            _save_statuses(doc_path, statuses)
+            if analysts:
+                merged = load_incident_analysts(doc_path)
+                merged.update(analysts)
+                save_incident_analysts(doc_path, merged)
+            _atomic_write_json(doc, doc_path)
+            audit("INCIDENT_STATUS", client=self.client_address[0],
+                  id=inc_id, status=new_status)
+            self._json(200, {"id": inc_id, "status": new_status})
+        finally:
+            self._audit_line(t0)
 
-    do_PUT = do_POST
-    do_DELETE = do_POST
-    do_PATCH = do_POST
+    # PUT/DELETE/PATCH stay rejected (read-only plane; POST /api/incident is
+    # the single sanctioned writer and only accepts POST)
+    def do_PUT(self):
+        self._json(405, {"error": "method not allowed"})
+
+    do_DELETE = do_PUT
+    do_PATCH = do_PUT
 
     def do_OPTIONS(self):
         origin = self.headers.get("Origin")
@@ -144,7 +241,7 @@ class HardenedHandler(SimpleHTTPRequestHandler):
             self.send_response(204)
             self.send_header("Access-Control-Allow-Origin", origin)
             self.write_common = None
-            self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+            self.send_header("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Authorization")
             self.send_header("Vary", "Origin")
             self.end_headers()
