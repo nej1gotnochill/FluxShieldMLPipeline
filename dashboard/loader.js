@@ -72,6 +72,9 @@ window.FSLOAD = (function () {
       });
       if (fin.length) m.final = fin;
     }
+    if (isObj(d.confusion) && isNum(d.confusion.tn) && isNum(d.confusion.fp) && isNum(d.confusion.fn) && isNum(d.confusion.tp)) {
+      m.confusion = { tn: d.confusion.tn, fp: d.confusion.fp, fn: d.confusion.fn, tp: d.confusion.tp };
+    }
     if (isArr(d.comparison)) {
       var cmp = [];
       d.comparison.forEach(function (e) {
