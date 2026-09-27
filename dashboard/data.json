@@ -1,28 +1,13 @@
 {
   "meta": {
-    "generated_at": "2026-09-26T19:45:03Z",
-    "source": "fixture-sample",
-    "schema_version": 1
+    "schema_version": 1,
+    "generated_at": "2026-09-26T17:19:30Z",
+    "source": "netra-ml"
   },
   "overview": {
     "observedRisk": 0.739,
-    "predicted": {
-      "tid": "T1190",
-      "name": "Exploit Public-Facing Application",
-      "tactic": "TA0001 Initial Access",
-      "conf": 0.833,
-      "desc": "Exploit attempts against the public-facing application."
-    },
     "maxFuture": 0.953,
-    "source": "rule-adjusted · model 0.559",
-    "earlyWarning": 6.8,
-    "anomaly": 95.3,
-    "throughput": 547.9,
-    "flows": "1.5k",
-    "packets": "11.2k",
-    "pipeline": "11.7 ms",
-    "loss": 3.03,
-    "windowsRetained": 90
+    "earlyWarning": 6.8
   },
   "ml": {
     "model": "ExtraTrees 300",
@@ -30,52 +15,1225 @@
     "threshold": 0.5,
     "features": 66,
     "evalProtocol": "Capture-disjoint · attack-family holdout",
-    "early": [
-      { "t": "1 s", "recall": 68.16 },
-      { "t": "3 s", "recall": 99.79 },
-      { "t": "5 s", "recall": 99.79 }
-    ],
     "trackB": 97.4,
+    "early": [
+      {
+        "t": "1 s",
+        "recall": 68.16
+      },
+      {
+        "t": "3 s",
+        "recall": 99.79
+      },
+      {
+        "t": "5 s",
+        "recall": 99.79
+      }
+    ],
     "final": [
-      { "k": "Recall", "v": "99.7849%" },
-      { "k": "Precision", "v": "99.9998%" },
-      { "k": "F1", "v": "99.8922%" },
-      { "k": "FPR", "v": "0.018%" }
+      {
+        "k": "Recall",
+        "v": "99.7849%"
+      },
+      {
+        "k": "Precision",
+        "v": "99.9998%"
+      },
+      {
+        "k": "F1",
+        "v": "99.8922%"
+      },
+      {
+        "k": "FPR",
+        "v": "0.018%"
+      }
     ],
     "comparison": [
-      { "nm": "Logistic Regression", "f1": 96.41, "sel": false, "why": "linear baseline — underfits flow-rate interactions" },
-      { "nm": "Random Forest", "f1": 99.12, "sel": false, "why": "strong but heavier at inference" },
-      { "nm": "ExtraTrees · 300", "f1": 99.89, "sel": true, "why": "SELECTED FOR ROBUST GENERALIZATION" },
-      { "nm": "HistGradientBoosting", "f1": 99.57, "sel": false, "why": "highest single-split score; less stable on unseen families" }
+      {
+        "nm": "Logistic Regression",
+        "f1": 96.41,
+        "sel": false,
+        "why": "linear baseline — underfits flow-rate interactions"
+      },
+      {
+        "nm": "ExtraTrees · 300",
+        "f1": 99.89,
+        "sel": true,
+        "why": "SELECTED FOR ROBUST GENERALIZATION"
+      }
     ]
   },
   "windows": [
-    { "i": 0, "risk": 0.312, "peak": 0.44, "pps": 2410, "flow": 52, "alert": false, "stage": "RECON", "technique": "T1046", "target": "—", "tsec": 70999 },
-    { "i": 1, "risk": 0.355, "peak": 0.48, "pps": 2610, "flow": 55, "alert": false, "stage": "RECON", "technique": "T1046", "target": "—", "tsec": 71001 }
+    {
+      "i": 0,
+      "risk": 0.24,
+      "peak": 0.36,
+      "pps": 2148,
+      "flow": 51,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62192
+    },
+    {
+      "i": 1,
+      "risk": 0.245,
+      "peak": 0.365,
+      "pps": 2174,
+      "flow": 52,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62194
+    },
+    {
+      "i": 2,
+      "risk": 0.25,
+      "peak": 0.37,
+      "pps": 2200,
+      "flow": 52,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62196
+    },
+    {
+      "i": 3,
+      "risk": 0.255,
+      "peak": 0.375,
+      "pps": 2226,
+      "flow": 52,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62198
+    },
+    {
+      "i": 4,
+      "risk": 0.26,
+      "peak": 0.38,
+      "pps": 2252,
+      "flow": 53,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62200
+    },
+    {
+      "i": 5,
+      "risk": 0.265,
+      "peak": 0.385,
+      "pps": 2278,
+      "flow": 53,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62202
+    },
+    {
+      "i": 6,
+      "risk": 0.27,
+      "peak": 0.39,
+      "pps": 2304,
+      "flow": 54,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62204
+    },
+    {
+      "i": 7,
+      "risk": 0.275,
+      "peak": 0.395,
+      "pps": 2330,
+      "flow": 54,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62206
+    },
+    {
+      "i": 8,
+      "risk": 0.28,
+      "peak": 0.4,
+      "pps": 2356,
+      "flow": 55,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62208
+    },
+    {
+      "i": 9,
+      "risk": 0.285,
+      "peak": 0.40499999999999997,
+      "pps": 2382,
+      "flow": 55,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62210
+    },
+    {
+      "i": 10,
+      "risk": 0.29,
+      "peak": 0.41,
+      "pps": 2408,
+      "flow": 56,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62212
+    },
+    {
+      "i": 11,
+      "risk": 0.295,
+      "peak": 0.415,
+      "pps": 2434,
+      "flow": 56,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62214
+    },
+    {
+      "i": 12,
+      "risk": 0.3,
+      "peak": 0.42,
+      "pps": 2460,
+      "flow": 57,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62216
+    },
+    {
+      "i": 13,
+      "risk": 0.305,
+      "peak": 0.425,
+      "pps": 2486,
+      "flow": 57,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62218
+    },
+    {
+      "i": 14,
+      "risk": 0.31,
+      "peak": 0.43,
+      "pps": 2512,
+      "flow": 57,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62220
+    },
+    {
+      "i": 15,
+      "risk": 0.315,
+      "peak": 0.435,
+      "pps": 2538,
+      "flow": 58,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62222
+    },
+    {
+      "i": 16,
+      "risk": 0.32,
+      "peak": 0.44,
+      "pps": 2564,
+      "flow": 58,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62224
+    },
+    {
+      "i": 17,
+      "risk": 0.325,
+      "peak": 0.445,
+      "pps": 2590,
+      "flow": 59,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62226
+    },
+    {
+      "i": 18,
+      "risk": 0.33,
+      "peak": 0.45,
+      "pps": 2616,
+      "flow": 59,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62228
+    },
+    {
+      "i": 19,
+      "risk": 0.335,
+      "peak": 0.455,
+      "pps": 2642,
+      "flow": 60,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62230
+    },
+    {
+      "i": 20,
+      "risk": 0.34,
+      "peak": 0.46,
+      "pps": 2668,
+      "flow": 60,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62232
+    },
+    {
+      "i": 21,
+      "risk": 0.345,
+      "peak": 0.46499999999999997,
+      "pps": 2694,
+      "flow": 61,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62234
+    },
+    {
+      "i": 22,
+      "risk": 0.35,
+      "peak": 0.47,
+      "pps": 2720,
+      "flow": 61,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62236
+    },
+    {
+      "i": 23,
+      "risk": 0.355,
+      "peak": 0.475,
+      "pps": 2746,
+      "flow": 61,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62238
+    },
+    {
+      "i": 24,
+      "risk": 0.36,
+      "peak": 0.48,
+      "pps": 2772,
+      "flow": 62,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62240
+    },
+    {
+      "i": 25,
+      "risk": 0.365,
+      "peak": 0.485,
+      "pps": 2798,
+      "flow": 62,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62242
+    },
+    {
+      "i": 26,
+      "risk": 0.37,
+      "peak": 0.49,
+      "pps": 2824,
+      "flow": 63,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62244
+    },
+    {
+      "i": 27,
+      "risk": 0.375,
+      "peak": 0.495,
+      "pps": 2850,
+      "flow": 63,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62246
+    },
+    {
+      "i": 28,
+      "risk": 0.38,
+      "peak": 0.5,
+      "pps": 2876,
+      "flow": 64,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62248
+    },
+    {
+      "i": 29,
+      "risk": 0.385,
+      "peak": 0.505,
+      "pps": 2902,
+      "flow": 64,
+      "alert": false,
+      "stage": "RECON",
+      "technique": "T1046",
+      "target": "—",
+      "tsec": 62250
+    },
+    {
+      "i": 30,
+      "risk": 0.39,
+      "peak": 0.51,
+      "pps": 2928,
+      "flow": 65,
+      "alert": false,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62252
+    },
+    {
+      "i": 31,
+      "risk": 0.406,
+      "peak": 0.526,
+      "pps": 3011,
+      "flow": 66,
+      "alert": false,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62254
+    },
+    {
+      "i": 32,
+      "risk": 0.422,
+      "peak": 0.542,
+      "pps": 3094,
+      "flow": 67,
+      "alert": false,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62256
+    },
+    {
+      "i": 33,
+      "risk": 0.438,
+      "peak": 0.558,
+      "pps": 3177,
+      "flow": 69,
+      "alert": false,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62258
+    },
+    {
+      "i": 34,
+      "risk": 0.454,
+      "peak": 0.5740000000000001,
+      "pps": 3260,
+      "flow": 70,
+      "alert": false,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62260
+    },
+    {
+      "i": 35,
+      "risk": 0.47,
+      "peak": 0.59,
+      "pps": 3344,
+      "flow": 72,
+      "alert": false,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62262
+    },
+    {
+      "i": 36,
+      "risk": 0.486,
+      "peak": 0.606,
+      "pps": 3427,
+      "flow": 73,
+      "alert": false,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62264
+    },
+    {
+      "i": 37,
+      "risk": 0.502,
+      "peak": 0.622,
+      "pps": 3510,
+      "flow": 75,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62266
+    },
+    {
+      "i": 38,
+      "risk": 0.518,
+      "peak": 0.638,
+      "pps": 3593,
+      "flow": 76,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62268
+    },
+    {
+      "i": 39,
+      "risk": 0.534,
+      "peak": 0.654,
+      "pps": 3676,
+      "flow": 78,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62270
+    },
+    {
+      "i": 40,
+      "risk": 0.55,
+      "peak": 0.67,
+      "pps": 3760,
+      "flow": 79,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62272
+    },
+    {
+      "i": 41,
+      "risk": 0.566,
+      "peak": 0.6859999999999999,
+      "pps": 3843,
+      "flow": 80,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62274
+    },
+    {
+      "i": 42,
+      "risk": 0.582,
+      "peak": 0.702,
+      "pps": 3926,
+      "flow": 82,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62276
+    },
+    {
+      "i": 43,
+      "risk": 0.598,
+      "peak": 0.718,
+      "pps": 4009,
+      "flow": 83,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62278
+    },
+    {
+      "i": 44,
+      "risk": 0.614,
+      "peak": 0.734,
+      "pps": 4092,
+      "flow": 85,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62280
+    },
+    {
+      "i": 45,
+      "risk": 0.63,
+      "peak": 0.75,
+      "pps": 4176,
+      "flow": 86,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62282
+    },
+    {
+      "i": 46,
+      "risk": 0.649,
+      "peak": 0.769,
+      "pps": 4274,
+      "flow": 88,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62284
+    },
+    {
+      "i": 47,
+      "risk": 0.668,
+      "peak": 0.788,
+      "pps": 4373,
+      "flow": 90,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62286
+    },
+    {
+      "i": 48,
+      "risk": 0.687,
+      "peak": 0.807,
+      "pps": 4472,
+      "flow": 91,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62288
+    },
+    {
+      "i": 49,
+      "risk": 0.706,
+      "peak": 0.826,
+      "pps": 4571,
+      "flow": 93,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62290
+    },
+    {
+      "i": 50,
+      "risk": 0.725,
+      "peak": 0.845,
+      "pps": 4670,
+      "flow": 95,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62292
+    },
+    {
+      "i": 51,
+      "risk": 0.744,
+      "peak": 0.864,
+      "pps": 4768,
+      "flow": 96,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62294
+    },
+    {
+      "i": 52,
+      "risk": 0.763,
+      "peak": 0.883,
+      "pps": 4867,
+      "flow": 98,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62296
+    },
+    {
+      "i": 53,
+      "risk": 0.782,
+      "peak": 0.902,
+      "pps": 4966,
+      "flow": 100,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62298
+    },
+    {
+      "i": 54,
+      "risk": 0.801,
+      "peak": 0.921,
+      "pps": 5065,
+      "flow": 102,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62300
+    },
+    {
+      "i": 55,
+      "risk": 0.82,
+      "peak": 0.94,
+      "pps": 5164,
+      "flow": 103,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62302
+    },
+    {
+      "i": 56,
+      "risk": 0.839,
+      "peak": 0.959,
+      "pps": 5262,
+      "flow": 105,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62304
+    },
+    {
+      "i": 57,
+      "risk": 0.858,
+      "peak": 0.978,
+      "pps": 5361,
+      "flow": 107,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62306
+    },
+    {
+      "i": 58,
+      "risk": 0.877,
+      "peak": 0.98,
+      "pps": 5460,
+      "flow": 108,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62308
+    },
+    {
+      "i": 59,
+      "risk": 0.896,
+      "peak": 0.98,
+      "pps": 5559,
+      "flow": 110,
+      "alert": true,
+      "stage": "EXPLOIT",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62310
+    },
+    {
+      "i": 60,
+      "risk": 0.917,
+      "peak": 0.98,
+      "pps": 5668,
+      "flow": 112,
+      "alert": true,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62312
+    },
+    {
+      "i": 61,
+      "risk": 0.879,
+      "peak": 0.98,
+      "pps": 5470,
+      "flow": 109,
+      "alert": true,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62314
+    },
+    {
+      "i": 62,
+      "risk": 0.841,
+      "peak": 0.961,
+      "pps": 5273,
+      "flow": 105,
+      "alert": true,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62316
+    },
+    {
+      "i": 63,
+      "risk": 0.803,
+      "peak": 0.923,
+      "pps": 5075,
+      "flow": 102,
+      "alert": true,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62318
+    },
+    {
+      "i": 64,
+      "risk": 0.765,
+      "peak": 0.885,
+      "pps": 4878,
+      "flow": 98,
+      "alert": true,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62320
+    },
+    {
+      "i": 65,
+      "risk": 0.727,
+      "peak": 0.847,
+      "pps": 4680,
+      "flow": 95,
+      "alert": true,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62322
+    },
+    {
+      "i": 66,
+      "risk": 0.689,
+      "peak": 0.8089999999999999,
+      "pps": 4482,
+      "flow": 92,
+      "alert": true,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62324
+    },
+    {
+      "i": 67,
+      "risk": 0.651,
+      "peak": 0.771,
+      "pps": 4285,
+      "flow": 88,
+      "alert": true,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62326
+    },
+    {
+      "i": 68,
+      "risk": 0.613,
+      "peak": 0.733,
+      "pps": 4087,
+      "flow": 85,
+      "alert": true,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62328
+    },
+    {
+      "i": 69,
+      "risk": 0.575,
+      "peak": 0.695,
+      "pps": 3889,
+      "flow": 81,
+      "alert": true,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62330
+    },
+    {
+      "i": 70,
+      "risk": 0.537,
+      "peak": 0.657,
+      "pps": 3692,
+      "flow": 78,
+      "alert": true,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62332
+    },
+    {
+      "i": 71,
+      "risk": 0.499,
+      "peak": 0.619,
+      "pps": 3494,
+      "flow": 74,
+      "alert": false,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62334
+    },
+    {
+      "i": 72,
+      "risk": 0.461,
+      "peak": 0.581,
+      "pps": 3297,
+      "flow": 71,
+      "alert": false,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62336
+    },
+    {
+      "i": 73,
+      "risk": 0.423,
+      "peak": 0.5429999999999999,
+      "pps": 3099,
+      "flow": 68,
+      "alert": false,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62338
+    },
+    {
+      "i": 74,
+      "risk": 0.385,
+      "peak": 0.505,
+      "pps": 2902,
+      "flow": 64,
+      "alert": false,
+      "stage": "CONTAIN",
+      "technique": "T1190",
+      "target": "dmz-web",
+      "tsec": 62340
+    },
+    {
+      "i": 75,
+      "risk": 0.35,
+      "peak": 0.47,
+      "pps": 2720,
+      "flow": 61,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62342
+    },
+    {
+      "i": 76,
+      "risk": 0.334,
+      "peak": 0.454,
+      "pps": 2636,
+      "flow": 60,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62344
+    },
+    {
+      "i": 77,
+      "risk": 0.318,
+      "peak": 0.438,
+      "pps": 2553,
+      "flow": 58,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62346
+    },
+    {
+      "i": 78,
+      "risk": 0.302,
+      "peak": 0.422,
+      "pps": 2470,
+      "flow": 57,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62348
+    },
+    {
+      "i": 79,
+      "risk": 0.286,
+      "peak": 0.40599999999999997,
+      "pps": 2387,
+      "flow": 55,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62350
+    },
+    {
+      "i": 80,
+      "risk": 0.27,
+      "peak": 0.39,
+      "pps": 2304,
+      "flow": 54,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62352
+    },
+    {
+      "i": 81,
+      "risk": 0.254,
+      "peak": 0.374,
+      "pps": 2220,
+      "flow": 52,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62354
+    },
+    {
+      "i": 82,
+      "risk": 0.238,
+      "peak": 0.358,
+      "pps": 2137,
+      "flow": 51,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62356
+    },
+    {
+      "i": 83,
+      "risk": 0.222,
+      "peak": 0.34199999999999997,
+      "pps": 2054,
+      "flow": 49,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62358
+    },
+    {
+      "i": 84,
+      "risk": 0.206,
+      "peak": 0.32599999999999996,
+      "pps": 1971,
+      "flow": 48,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62360
+    },
+    {
+      "i": 85,
+      "risk": 0.19,
+      "peak": 0.31,
+      "pps": 1888,
+      "flow": 47,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62362
+    },
+    {
+      "i": 86,
+      "risk": 0.174,
+      "peak": 0.294,
+      "pps": 1804,
+      "flow": 45,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62364
+    },
+    {
+      "i": 87,
+      "risk": 0.158,
+      "peak": 0.278,
+      "pps": 1721,
+      "flow": 44,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62366
+    },
+    {
+      "i": 88,
+      "risk": 0.142,
+      "peak": 0.262,
+      "pps": 1638,
+      "flow": 42,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62368
+    },
+    {
+      "i": 89,
+      "risk": 0.126,
+      "peak": 0.246,
+      "pps": 1555,
+      "flow": 41,
+      "alert": false,
+      "stage": "RECOVERY",
+      "technique": "T1042",
+      "target": "—",
+      "tsec": 62370
+    }
   ],
   "hosts": [
-    { "id": "dmz-web", "ip": "10.0.3.10", "zone": "DMZ", "kind": "server", "risk": 0.839, "state": "high", "tech": "T1190 · T1110", "flows": 412 },
-    { "id": "ext-src", "ip": "192.168.100.7", "zone": "External", "kind": "external", "risk": 0.902, "state": "high", "tech": "T1110 source", "flows": 1210 }
+    {
+      "id": "dmz-web",
+      "ip": "10.0.3.10",
+      "zone": "DMZ",
+      "kind": "server",
+      "risk": 0.839,
+      "state": "high",
+      "tech": "T1190 · T1110",
+      "flows": 412
+    },
+    {
+      "id": "srv-app",
+      "ip": "10.0.2.40",
+      "zone": "SERVERS",
+      "kind": "server",
+      "risk": 0.611,
+      "state": "susp",
+      "tech": "T1021",
+      "flows": 188
+    }
   ],
   "branches": [
-    { "id": "A", "p": 66, "tid": "T1190", "desc": "Exploit the public-facing application", "ttE": "+6s", "asset": "dmz-web", "risk": 0.953, "color": "red" },
-    { "id": "B", "p": 23, "tid": "T1110", "desc": "Reuse harvested credentials on the VPN", "ttE": "+12s", "asset": "srv-id", "risk": 0.655, "color": "amber" },
-    { "id": "C", "p": 10, "tid": "—", "desc": "Account lockout ends the attempt", "ttE": "+8s", "asset": "external", "risk": 0.12, "color": "dim" }
+    {
+      "id": "A",
+      "p": 66.0,
+      "tid": "T1190",
+      "desc": "Exploit the public-facing application",
+      "ttE": "+6s",
+      "asset": "dmz-web",
+      "risk": 0.953,
+      "color": "red"
+    }
   ],
   "incidents": [
-    { "id": "INC-0142", "sev": "HIGH", "status": "TRIAGING", "tid": "T1110", "tech": "Brute Force", "target": "dmz-web", "ip": "10.0.3.10", "peak": 0.772, "lead": 11.4, "dur": "34s", "analyst": "a.rao", "alerts": 147, "opened": "19:48:42", "evidence": 58 }
+    {
+      "id": "INC-0142",
+      "sev": "HIGH",
+      "status": "TRIAGING",
+      "tid": "T1110",
+      "tech": "Brute Force",
+      "target": "dmz-web",
+      "ip": "10.0.3.10",
+      "peak": 0.772,
+      "lead": 11.4,
+      "dur": "34s",
+      "analyst": "a.rao",
+      "alerts": 147,
+      "opened": "19:48:42",
+      "evidence": 58
+    }
   ],
   "events": [
-    { "ts": "19:44:52", "sev": "CRIT", "src": "inference", "host": "dmz-web", "msg": "Model risk 0.839 over threshold 0.65 — alert raised" }
+    {
+      "ts": "19:44:52",
+      "sev": "CRIT",
+      "src": "inference",
+      "host": "dmz-web",
+      "msg": "Model risk 0.839 over threshold 0.50 — alert raised"
+    }
   ],
   "predictions": [
-    { "tid": "T1190", "name": "Exploit Public-Facing Application", "p": 0.833, "eta": "+6s", "conf": "0.833" }
+    {
+      "tid": "T1190",
+      "name": "Exploit Public-Facing Application",
+      "p": 0.833,
+      "eta": "+6s",
+      "conf": "0.833"
+    }
   ],
   "stateVector": [
-    { "nm": "H_emb_0", "v": 0.335, "hot": true }
+    {
+      "nm": "H_emb_0",
+      "v": 0.335,
+      "hot": true
+    }
   ],
   "attack": [
-    { "tactic": "Initial Access", "items": [ { "id": "T1190", "name": "Exploit Public-Facing App", "state": "hot", "p": 0.83 } ] }
+    {
+      "tactic": "Initial Access",
+      "items": [
+        {
+          "id": "T1190",
+          "name": "Exploit Public-Facing App",
+          "state": "hot",
+          "p": 0.83
+        }
+      ]
+    }
   ],
   "campaign": {
     "id": "CMP-007 · BRUTE-FORCE → EXPLOIT CHAIN",
@@ -83,6 +1241,13 @@
     "hosts": 4,
     "flows": 1918,
     "alerts": 307,
-    "stages": [ { "nm": "Recon", "ts": "19:43:19", "done": true, "tid": "T1046" } ]
+    "stages": [
+      {
+        "nm": "Recon",
+        "ts": "19:43:19",
+        "done": true,
+        "tid": "T1046"
+      }
+    ]
   }
 }

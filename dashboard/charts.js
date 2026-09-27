@@ -7,6 +7,18 @@ window.FS = (function () {
   var NS = 'http://www.w3.org/2000/svg';
   var LIVE = [];
   function registerLive(svg){ if (LIVE.indexOf(svg)<0) LIVE.push(svg); }
+
+  /* reposition every live playhead to its cfg.playIndex (replay transport) */
+  function tickPlayheads() {
+    LIVE.forEach(function (r) {
+      if (!r.playhead || !r.cfg || r.cfg.playIndex == null || !r.cfg.obs || !r.cfg.obs.length) return;
+      var t = Math.max(0, Math.min(r.cfg.obs.length - 1, r.cfg.playIndex));
+      var x = r.X(t);
+      if (r.line) { r.line.setAttribute('x1', x); r.line.setAttribute('x2', x); }
+      var v = r.cfg.obs[Math.floor(t)];
+      if (r.dot && v != null) { r.dot.setAttribute('cx', x); r.dot.setAttribute('cy', r.Y(v)); }
+    });
+  }
   var MONO = "'IBM Plex Mono', monospace";
   function el(tag, attrs, parent) {
     var e = document.createElementNS(NS, tag);
@@ -65,7 +77,7 @@ window.FS = (function () {
     steps.forEach(function (v) {
       var y = Y(v * yMax);
       el('line', { x1: mL, x2: w - mR, y1: y, y2: y, stroke: v === 0 ? '#222522' : 'rgba(244,245,241,.05)', 'stroke-width': 1 }, svg);
-      var t = el('text', { x: mL - 5, y: y + 3, 'text-anchor': 'end', 'font-size': 8, fill: '#565B54', 'font-family': MONO }, svg);
+      var t = el('text', { x: mL - 5, y: y + 3, 'text-anchor': 'end', 'font-size': 10, fill: '#565B54', 'font-family': MONO }, svg);
       t.textContent = String(v);
     });
 
@@ -73,7 +85,7 @@ window.FS = (function () {
     if (cfg.threshold != null) {
       var ty = Y(cfg.threshold);
       el('line', { x1: mL, x2: w - mR, y1: ty, y2: ty, stroke: '#E15252', 'stroke-width': 1, 'stroke-dasharray': '3 3', opacity: .8 }, svg);
-      var tt = el('text', { x: mL + 4, y: ty - 3, 'font-size': 8, fill: '#737871', 'font-family': MONO }, svg);
+      var tt = el('text', { x: mL + 4, y: ty - 3, 'font-size': 10, fill: '#737871', 'font-family': MONO }, svg);
       tt.textContent = 'THRESHOLD ' + fmt(cfg.threshold, 2);
     }
 
@@ -128,6 +140,12 @@ window.FS = (function () {
     if (cfg.nowIndex != null) {
       el('line', { x1: X(cfg.nowIndex), x2: X(cfg.nowIndex), y1: mT, y2: mT + ih, stroke: '#F4F5F1', 'stroke-width': 1, opacity: .7 }, svg);
     }
+    /* replay playhead — repositioned live by FS.tickPlayheads() during playback */
+    if (cfg.playIndex != null) {
+      var ph = el('line', { x1: X(cfg.playIndex), x2: X(cfg.playIndex), y1: mT, y2: mT + ih, stroke: '#F4F5F1', 'stroke-width': 1.2, opacity: .85 }, svg);
+      var pd = el('circle', { r: 3.2, fill: '#C9FF3F', stroke: '#050706', 'stroke-width': 1 }, svg);
+      registerLive({ line: ph, dot: pd, cfg: cfg, X: X, Y: Y, playhead: true });
+    }
     /* vertical gridlines */
     if (cfg.vgrid) {
       for (var g = 0; g < cfg.vgrid.length; g++) {
@@ -139,7 +157,7 @@ window.FS = (function () {
     /* x labels */
     if (cfg.xLabels) {
       cfg.xLabels.forEach(function (lb) {
-        var t = el('text', { x: X(lb.i), y: h - 5, 'text-anchor': lb.anchor || 'middle', 'font-size': 8, fill: '#565B54', 'font-family': MONO }, svg);
+        var t = el('text', { x: X(lb.i), y: h - 5, 'text-anchor': lb.anchor || 'middle', 'font-size': 10, fill: '#565B54', 'font-family': MONO }, svg);
         t.textContent = lb.t;
       });
     }
@@ -148,7 +166,7 @@ window.FS = (function () {
     if (cfg.hover !== false && cfg.obs) {
       var xh = el('line', { y1: mT, y2: mT + ih, stroke: 'rgba(244,245,241,.28)', 'stroke-width': 1, visibility: 'hidden' }, svg);
       var xhc = el('circle', { r: 3, fill: '#D7FF63', stroke: '#050706', 'stroke-width': 1, visibility: 'hidden' }, svg);
-      var xht = el('text', { 'font-size': 8.5, fill: '#F4F5F1', 'font-family': MONO, visibility: 'hidden' }, svg);
+      var xht = el('text', { 'font-size': 10, fill: '#F4F5F1', 'font-family': MONO, visibility: 'hidden' }, svg);
       var xhb = el('rect', { height: 14, fill: '#111312', stroke: '#292C29', visibility: 'hidden' }, svg);
       var bandRect = el('rect', { x: mL, y: mT, width: iw, height: ih, fill: 'transparent' }, svg);
       svg.insertBefore(bandRect, svg.firstChild.nextSibling || svg.firstChild);
@@ -195,8 +213,9 @@ window.FS = (function () {
   setInterval(function () {
     if (document.hidden) return;
     var now = performance.now() / 1000;
-    LIVE = LIVE.filter(function (L) { return L.svg.isConnected; });
+    LIVE = LIVE.filter(function (L) { return (L.svg || L.line).isConnected; });
     LIVE.forEach(function (L) {
+      if (L.playhead) return; /* playheads are driven by FS.tickPlayheads(), not this loop */
       var n = L.cfg.obs.length;
       var total = L.cfg.foreAppend ? n + L.cfg.foreAppend : n;
       var phase = (now * 0.14) % 1;
@@ -217,6 +236,6 @@ window.FS = (function () {
   return {
     el: el, div: div, esc: esc, fmt: fmt, secOfDay: secOfDay,
     riskColor: riskColor, riskState: riskState,
-    seriesChart: seriesChart, lattice: lattice
+    seriesChart: seriesChart, lattice: lattice, tickPlayheads: tickPlayheads
   };
 })();

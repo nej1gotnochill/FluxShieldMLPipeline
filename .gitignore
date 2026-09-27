@@ -42,3 +42,7 @@ logs/
 .freebuff/
 .cache/
 cache/
+
+# local dashboard dev server artifacts
+server.log
+.server.pid

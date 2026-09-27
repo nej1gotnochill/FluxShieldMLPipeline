@@ -5,7 +5,7 @@ No other backend changes are required on the UI side.
 
 ## File
 
-`fluxshield/data.json` — written by your pipeline (any language), fetched by the UI at boot.
+`data.json` — written by your pipeline (any language), fetched by the UI at boot.
 
 ## Loading behavior
 
@@ -83,7 +83,7 @@ sections incrementally as your pipeline produces them:
 
 ## Writer: `fs_emit.py` (recommended)
 
-`fluxshield/fs_emit.py` implements this contract and mirrors the UI's validation
+`fs_emit.py` implements this contract and mirrors the UI's validation
 rules, so anything it emits loads clean. It clamps risks into [0, 1], derives
 `windows.alert` from `ml.threshold`, and writes atomically (tmp + rename) so the
 UI never reads a half-written file. Omit any section to keep it fixture-backed.
