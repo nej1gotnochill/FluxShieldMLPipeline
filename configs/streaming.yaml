@@ -1,0 +1,64 @@
+# Netra streaming layer — explicit configuration
+#
+# Every threshold/weight used by the live path is stated here. Nothing in the
+# fusion or detector code hides a magic number: if it influences an alert, it
+# is in this file (or a model artifact's threshold.json for the frozen DDoS
+# model, whose operating point is documented in reports/calibration_report.md).
+#
+# Principles:
+#   * the DDoS detector's thresholds are NOT restated here — they live in
+#     models/threshold.json and are loaded from the frozen artifacts;
+#   * rule detectors are evidence-gated, marked DATA-LIMITED, and their
+#     floors are intentionally conservative until real evaluation data exists;
+#   * the fusion formula is: risk = max(class_scores)
+#       + persistence_bonus * excess_repeat_windows
+#       + cross_host_bonus * (hosts_flagged - 1),  clamped to [0, 1].
+
+windows:
+  window_sec: 3.0              # causal observation window W (early-detection parity)
+  agg_window_sec: 10.0         # cross-flow aggregation bucket
+  reap_grace_sec: 2.0          # freeze quiet window accumulators after W + grace
+
+state:
+  ttl_sec: 300                 # default per-key expiry
+  capacity: 100000             # per-namespace key cap (oldest evicted)
+  c2_pair_ttl_sec: 900         # beacon series outlive several buckets
+
+bus:
+  maxsize: 10000               # bounded alert queue; overflow drops NEWEST (counted)
+
+fusion:
+  suspicious_floor: 0.5        # risk >= this -> SUSPICIOUS
+  attack_floor: 0.8            # risk >= this -> ATTACK
+  persistence_bonus: 0.05      # added per repeat window beyond persistence_windows_required
+  cross_host_bonus: 0.02       # added per additional flagged host
+  persistence_windows_required: 2
+
+detectors:
+  ddos:
+    alert_cooldown_sec: 60     # per (source, subtype); floods emit one alert per window
+    batch_rows: 1024           # micro-batch size for vectorized scoring
+    flush_every_packets: 5000
+  c2:
+    min_events: 6              # minimum flows in a pair series
+    cv_strong: 0.35            # interval CV at/below this -> perfectly periodic
+    cv_weak: 0.65              # interval CV above this -> not periodic
+    min_interval_sec: 1.0      # sub-second repetition is volumetric, not beaconing
+    max_pair_rate: 0.5         # flows/sec per pair above this -> flood, not beacon
+    alert_cooldown_sec: 60     # per (src, dst)
+  dns:
+    entropy_hi: 3.8            # mean query-name entropy considered high
+    qlen_hi: 45                # mean query length considered long (DGA signal)
+    maxlabel_hi: 25            # label length considered tunnel-like
+    tunnel_qlen: 60            # mean query length target for tunnel scoring
+    min_queries: 5             # queries per registrable domain before scoring
+  tls:
+    min_sessions: 3            # sessions from one source before reporting
+  recon:
+    port_fanout: 12            # unique ports that can reach full score
+    host_fanout: 8             # unique hosts that can reach full score
+    min_flows: 10              # flows in a window before scoring
+  exfil:
+    out_ratio: 8.0             # outbound/inbound byte ratio considered asymmetric
+    min_bytes_out: 5000000     # baseline gate: small transfers never scored
+    min_dst: 3                 # destination rarity component

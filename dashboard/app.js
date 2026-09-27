@@ -147,16 +147,43 @@
     host.innerHTML = '';
     var def = SCREENS[S.screen];
     var root = div('screen active');
-    def.build(root);
+    try {
+      def.build(root);
+    } catch (err) {
+      /* never blank the whole app because one build threw */
+      root.innerHTML = '<div class="pad"><div class="panel"><div class="panel-bd">Screen "' + esc(S.screen) +
+        '" failed to render — ' + esc(String((err && err.message) || err)) + '</div></div></div>';
+      if (window.console && console.error) console.error('[render:' + S.screen + ']', err);
+    }
     host.appendChild(root);
     $('tb-page').textContent = def.title;
-    qsa('.nav-item').forEach(function (n) { n.classList.toggle('active', n.dataset.scr === S.screen); });
+    qsa('.nav-item').forEach(function (n) {
+      n.classList.toggle('active', n.dataset.scr === S.screen);
+      /* keep the active item visible in the ≤860px horizontal nav strip */
+      if (n.dataset.scr === S.screen) n.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
   }
 
   function nav(scr) {
     S.screen = scr;
     renderScreen();
   }
+
+  /* capture length helpers — derived from the loaded windows, not hardcoded,
+     so short live series (pipeline emits fewer windows) render correctly */
+  function captureLen() { return Math.max(1, D.windows.length - 1); }
+  function windowSec() { return 2; } /* contract: fixed 2.0 s window spacing */
+
+  /* horizontal wheel → vertical-delta scroll for the ≤860px nav strip */
+  document.addEventListener('wheel', function (ev) {
+    var nav = document.getElementById('nav');
+    if (!nav || !nav.contains(ev.target)) return;
+    if (nav.scrollWidth <= nav.clientWidth) return;
+    if (Math.abs(ev.deltaY) > Math.abs(ev.deltaX)) {
+      ev.preventDefault();
+      nav.scrollLeft += ev.deltaY;
+    }
+  }, { passive: false });
 
   /* =====================================================
      01 OVERVIEW
@@ -188,6 +215,13 @@
       var fbody = div('netfield-wrap');
       fbody.id = 'ovField';
       fieldPanel.appendChild(fbody);
+      /* hover tooltip: full host details for any cube under the cursor */
+      fbody.addEventListener('mousemove', function (ev) {
+        var rect = fbody.getBoundingClientRect();
+        var id = nearestHost(ev.clientX - rect.left, ev.clientY - rect.top);
+        if (id) ttShow(ev, id, hostTipRows(id)); else ttHide();
+      });
+      fbody.addEventListener('mouseleave', ttHide);
       var fctx = div('field-ctx');
       fctx.id = 'ovFieldCtx';
       fctx.innerHTML = '<span class="fc-k">FIELD</span><span class="fc-v">Select a node for host context.</span><span class="fc-x">click again to clear</span>';
@@ -299,7 +333,7 @@
         var st = e.sev === 'CRIT' ? ['CRITICAL', 'var(--red)'] : e.sev === 'WARN' ? ['SUSPICIOUS', 'var(--amber)'] : ['NOMINAL', 'var(--green)'];
         var tr = document.createElement('tr');
         tr.innerHTML = '<td class="mono-ip">' + e.ts + '</td><td class="mono-ip">' + ehost + '</td><td>' + esc(e.msg.length > 42 ? e.msg.slice(0, 42) + '…' : e.msg) + '</td>' +
-          '<td class="r">' + risk + '</td><td><span class="dot" style="background:' + st[1] + '"></span> <span style="color:' + st[1] + ';font-size:9px;letter-spacing:.08em">' + st[0] + '</span></td>';
+          '<td class="r">' + risk + '</td><td><span class="dot" style="background:' + st[1] + '"></span> <span style="color:' + st[1] + ';font-size:11px;letter-spacing:.08em">' + st[0] + '</span></td>';
         afb2.appendChild(tr);
       });
       aft.appendChild(afb2);
@@ -363,7 +397,7 @@
         }
         TL.forEach(function (e, ix) {
           var n = div('tl-node ' + (e.future ? 'now' : e.kind) + (e.future ? ' now' : ''));
-          if (e.future) { n.style.borderColor = 'var(--red)'; n.style.width = '9px'; n.style.height = '9px'; n.style.top = '-4px'; n.style.background = 'var(--panel)'; }
+          if (e.future) { n.style.borderColor = 'var(--red)'; n.style.width ='11px '; n.style.height ='11px '; n.style.top = '-4px'; n.style.background = 'var(--panel)'; }
           n.style.left = (4 + ix * (92 / (TL.length - 1))) + '%';
           n.setAttribute('tabindex', '0');
           n.setAttribute('role', 'button');
@@ -451,9 +485,9 @@
         var col = s.mode === 'obs' ? '#A8ADA5' : s.mode === 'cur' ? '#E15252' : '#343831';
         var fill = s.mode === 'cur' ? '#E15252' : s.mode === 'obs' ? '#A8ADA5' : '#111312';
         el('rect', { x: s.x - 6, y: 24, width: 12, height: 12, fill: fill, stroke: col, 'stroke-width': 1 }, svg);
-        var t1 = el('text', { x: s.x, y: 50, 'text-anchor': 'middle', 'font-size': 9, fill: s.mode === 'cur' ? '#F4F5F1' : s.mode === 'none' ? '#343831' : '#737871', 'letter-spacing': '1.5' }, svg);
+        var t1 = el('text', { x: s.x, y: 50, 'text-anchor': 'middle', 'font-size': 11, fill: s.mode === 'cur' ? '#F4F5F1' : s.mode === 'none' ? '#343831' : '#737871', 'letter-spacing': '1.5' }, svg);
         t1.textContent = s.nm;
-        var t2 = el('text', { x: s.x, y: 63, 'text-anchor': 'middle', 'font-size': 8, fill: s.mode === 'cur' ? '#E15252' : '#565B54' }, svg);
+        var t2 = el('text', { x: s.x, y: 63, 'text-anchor': 'middle', 'font-size': 10, fill: s.mode === 'cur' ? '#E15252' : '#565B54' }, svg);
         t2.textContent = s.tid + (s.t ? '  ' + s.t : '');
       });
       /* NOW flag */
@@ -485,17 +519,63 @@
       var Wt = 1100, Ht = 470;
       var svgt = el('svg', { viewBox: '0 0 ' + Wt + ' ' + Ht, preserveAspectRatio: 'none' });
 
+      /* dotted world-map backdrop — faint halftone landmass behind the
+         branches (equirectangular landmask, drawn as a dot grid) */
+      (function () {
+        var LAND = [
+          [],
+          [[12,16]],
+          [[12,16],[20,25],[44,46]],
+          [[4,7],[10,17],[20,25],[32,58]],
+          [[3,18],[19,19],[22,24],[27,59]],
+          [[6,19],[21,21],[29,58]],
+          [[9,19],[21,26],[29,57]],
+          [[8,18],[21,27],[30,52],[55,56]],
+          [[8,18],[26,28],[29,42],[43,51],[55,55]],
+          [[9,17],[27,41],[43,50]],
+          [[10,14],[26,40],[41,50]],
+          [[11,13],[26,40],[41,48]],
+          [[12,14],[26,37],[41,43],[45,49]],
+          [[13,15],[26,38],[43,43],[46,48],[50,50]],
+          [[14,22],[27,38],[46,53]],
+          [[14,23],[28,38],[47,54]],
+          [[15,24],[29,38],[48,52],[54,57]],
+          [[16,24],[29,38],[49,54]],
+          [[16,23],[29,38],[40,40],[49,56]],
+          [[17,22],[30,36],[48,56]],
+          [[17,21],[30,35],[49,56]],
+          [[17,20],[52,54],[57,58]],
+          [[17,19],[54,54],[58,58]],
+          [[17,19]],
+          [[17,18]],
+          [],
+          [],
+          [],
+          [],
+          []
+        ];
+        var g = el('g', { opacity: '0.10' }, svgt);
+        var dx = 18, dy = 15.5, x0 = 20, y0 = 10;
+        for (var r = 0; r < LAND.length; r++) {
+          LAND[r].forEach(function (rg) {
+            for (var c = rg[0]; c <= rg[1]; c++) {
+              el('circle', { cx: x0 + c * dx, cy: y0 + r * dy, r: 2, fill: '#A8ADA5' }, g);
+            }
+          });
+        }
+      })();
+
       /* vertical gridlines */
       [280, 560, 840].forEach(function (gx) {
         el('line', { x1: gx, x2: gx, y1: 0, y2: Ht, stroke: '#0A0C0A', 'stroke-width': 1 }, svgt);
       });
       /* observed baseline */
       el('line', { x1: 30, y1: 235, x2: 350, y2: 235, stroke: '#D6DAD2', 'stroke-width': 2 }, svgt);
-      var nowTxt = el('text', { x: 350, y: 210, 'text-anchor': 'end', 'font-size': 9, fill: '#F4F5F1', 'letter-spacing': '1' }, svgt);
+      var nowTxt = el('text', { x: 350, y: 210, 'text-anchor': 'end', 'font-size': 11, fill: '#F4F5F1', 'letter-spacing': '1' }, svgt);
       nowTxt.textContent = 'NOW';
-      var rTxt = el('text', { x: 350, y: 224, 'text-anchor': 'end', 'font-size': 8, fill: '#737871' }, svgt);
+      var rTxt = el('text', { x: 350, y: 224, 'text-anchor': 'end', 'font-size': 10, fill: '#737871' }, svgt);
       rTxt.textContent = 'T1110 · risk 0.580';
-      var obTxt = el('text', { x: 30, y: 252, 'font-size': 8, fill: '#565B54', 'letter-spacing': '2' }, svgt);
+      var obTxt = el('text', { x: 30, y: 252, 'font-size': 10, fill: '#565B54', 'letter-spacing': '2' }, svgt);
       obTxt.textContent = 'OBSERVED';
 
       /* branch A — rising red dotted */
@@ -503,7 +583,7 @@
         var d = 'M350,235 C420,150 460,120 540,132';
         el('path', { d: d, fill: 'none', stroke: '#E15252', 'stroke-width': 2, 'stroke-dasharray': '2 4' }, svgt);
         el('rect', { x: 534, y: 126, width: 12, height: 12, fill: '#E15252', stroke: '#E15252' }, svgt);
-        var lbl = el('text', { x: 430, y: 165, 'font-size': 8, fill: '#737871' }, svgt); lbl.textContent = 'exploital';
+        var lbl = el('text', { x: 430, y: 165, 'font-size': 10, fill: '#737871' }, svgt); lbl.textContent = 'exploital';
       })();
       /* branch B — flat amber dashed */
       (function () {
@@ -511,8 +591,8 @@
         [445, 560, 700].forEach(function (gx) {
           el('rect', { x: gx - 4, y: 231, width: 8, height: 8, fill: '#111312', stroke: '#E0A84A', 'stroke-width': 1 }, svgt);
         });
-        var l1 = el('text', { x: 445, y: 252, 'font-size': 8, fill: '#565B54', 'text-anchor': 'middle' }, svgt); l1.textContent = 'exploital';
-        var l2 = el('text', { x: 560, y: 252, 'font-size': 8, fill: '#565B54', 'text-anchor': 'middle' }, svgt); l2.textContent = 'dmz-vpn';
+        var l1 = el('text', { x: 445, y: 252, 'font-size': 10, fill: '#565B54', 'text-anchor': 'middle' }, svgt); l1.textContent = 'exploital';
+        var l2 = el('text', { x: 560, y: 252, 'font-size': 10, fill: '#565B54', 'text-anchor': 'middle' }, svgt); l2.textContent = 'dmz-vpn';
       })();
       /* branch C — decay gray dotted */
       (function () {
@@ -551,7 +631,7 @@
 
       /* x axis */
       var axis = div();
-      axis.style.cssText = 'position:absolute;left:0;right:0;bottom:6px;display:flex;justify-content:space-between;padding:0 30px;font-size:8px;color:#565B54;letter-spacing:1px';
+      axis.style.cssText = 'position:absolute;left:0;right:0;bottom:6px;display:flex;justify-content:space-between;padding:0 30px;font-size:12px;color:#565B54;letter-spacing:1px';
       axis.innerHTML = '<span>NOW</span><span>+4s</span><span>+8s</span><span>+12s</span><span>+16s</span>';
       body.appendChild(axis);
 
@@ -577,7 +657,7 @@
     chartWrap.appendChild(renderMiniChart(0));
     row.appendChild(chartWrap);
     var rp = div();
-    rp.style.cssText = 'width:170px;font-size:9px;color:#C9FF3F;letter-spacing:1px;line-height:1.6';
+    rp.style.cssText = 'width:170px;font-size:11px;color:#C9FF3F;letter-spacing:1px;line-height:1.6';
     rp.id = 'miniRp';
     row.appendChild(rp);
     p.appendChild(row);
@@ -585,12 +665,14 @@
       miniReplayBar._timer = setInterval(function () {
         var cw = document.getElementById('miniChart');
         if (!cw) return;
-        miniReplayBar._t = ((miniReplayBar._t || 0) + 1) % 90;
+        var wn = D.windows.length;
+        if (!wn) return;
+        miniReplayBar._t = ((miniReplayBar._t || 0) + 1) % wn;
         cw.innerHTML = '';
         cw.appendChild(renderMiniChart(miniReplayBar._t));
         var w = D.windows[miniReplayBar._t];
         document.getElementById('miniRp').innerHTML =
-          'REPLAY<br>t −' + (89 - miniReplayBar._t) + 's · ' + FS.secOfDay(w.tsec) + '<br><span style="color:' + FS.riskColor(w.risk) + ';font-size:12px">' + fmt(w.risk) + '</span>';
+          'REPLAY<br>t −' + ((wn - 1 - miniReplayBar._t) * 2) + 's · ' + FS.secOfDay(w.tsec) + '<br><span style="color:' + FS.riskColor(w.risk) + ';font-size:12px">' + fmt(w.risk) + '</span>';
       }, 900);
     }
     return p;
@@ -646,6 +728,23 @@
           '<div class="node"><div class="lbl">STATUS</div><div class="nm">' + FS.riskState(H.risk) + '</div><div class="ip">monitoring</div><div class="x">lead ' + D.OVERVIEW.earlyWarning + ' s</div></div>';
       }
       apPanel.appendChild(ap);
+      /* hover tooltip: full details for the attack-path node boxes */
+      ap.addEventListener('mousemove', function (ev) {
+        var node = ev.target.closest('.node');
+        if (!node) { ttHide(); return; }
+        var id = node.querySelector('.nm')?.textContent;
+        var hh = id && D.HOSTS.find(function (x) { return x.id === id; });
+        if (hh) { ttShow(ev, hh.id, hostTipRows(hh.id)); return; }
+        /* node not in the host rollup: show what the box itself knows */
+        if (id) {
+          var g = function (sel) { return (node.querySelector(sel) || {}).textContent || '—'; };
+          ttShow(ev, id, [
+            ['ZONE', g('.lbl')], ['IP', g('.ip')],
+            ['RISK', g('.x').replace(/^risk\s*/i, '')]
+          ]);
+        }
+      });
+      ap.addEventListener('mouseleave', ttHide);
       var footTabs = div('tabs');
       footTabs.innerHTML = '<div class="tab active">FLOW EVIDENCE · ' + H.flows + '</div><div class="tab">ATT&CK · ' + esc(H.tech) + '</div>';
       apPanel.appendChild(footTabs);
@@ -848,10 +947,10 @@
       }
       function nlbl(id) {
         var n = NN[id], p = n._p, ys = 15;
-        var t = el('text', { x: p.x, y: p.y + ys, 'font-size': 8, fill: n.lc || (n.kind === 'high' || n.kind === 'susp' ? n.col : '#737871'), 'text-anchor': 'middle', 'letter-spacing': '.5' }, svg);
+        var t = el('text', { x: p.x, y: p.y + ys, 'font-size': 10, fill: n.lc || (n.kind === 'high' || n.kind === 'susp' ? n.col : '#737871'), 'text-anchor': 'middle', 'letter-spacing': '.5' }, svg);
         t.textContent = n.nm;
         (n.sub || []).forEach(function (s2, i2) {
-          var t2 = el('text', { x: p.x, y: p.y + ys + 11 + i2 * 11, 'font-size': 8, fill: /^risk /.test(s2) ? (n.lc || '#737871') : '#737871', 'text-anchor': 'middle', 'letter-spacing': '.5' }, svg);
+          var t2 = el('text', { x: p.x, y: p.y + ys + 11 + i2 * 11, 'font-size': 10, fill: /^risk /.test(s2) ? (n.lc || '#737871') : '#737871', 'text-anchor': 'middle', 'letter-spacing': '.5' }, svg);
           t2.textContent = s2;
         });
       }
@@ -905,7 +1004,7 @@
       zoneCols.forEach(function (z) {
         var a = netIso(z.u, -0.03), b2 = netIso(z.u, 1.02);
         el('line', { x1: a.x, y1: a.y, x2: b2.x, y2: b2.y, stroke: 'rgba(201,255,63,.08)', 'stroke-width': 1 }, svg);
-        var t = el('text', { x: a.x, y: a.y - 10, 'font-size': 8, fill: '#565B54', 'letter-spacing': '1.5', 'text-anchor': 'middle' }, svg);
+        var t = el('text', { x: a.x, y: a.y - 10, 'font-size': 10, fill: '#565B54', 'letter-spacing': '1.5', 'text-anchor': 'middle' }, svg);
         t.textContent = z.nm;
       });
       [0.25, 0.5, 0.75].forEach(function (v) {
@@ -987,26 +1086,28 @@
       Object.keys(NN).forEach(function (id) { nlbl(id); });
 
       /* clickable hit areas for hosts */
-      var hit = ['dmz-web', 'srv-app', 'srv-db', 'ext-src', 'srv-id', 'srv-file'].map(function (id) {
-        return { id: id, x: NN[id]._p.x, y: NN[id]._p.y };
-      });
+      var hit = Object.keys(NN).map(function (id) { return { id: id, x: NN[id]._p.x, y: NN[id]._p.y }; });
       hit.forEach(function (h) {
-        var c = el('circle', { cx: h.x, cy: h.y, r: 16, fill: 'transparent', cursor: 'pointer' }, svg);
+        var c = el('circle', { cx: h.x, cy: h.y, r: 14, fill: 'transparent', cursor: 'help' }, svg);
         c.addEventListener('mousemove', function (ev) {
+          var n = NN[h.id];
           var hh = D.HOSTS.find(function (x) { return x.id === h.id; });
-          if (!hh) return;
-          var rc = hh.risk >= 0.65 ? 'red' : hh.risk >= 0.45 ? 'amber' : 'teal';
-          ttShow(ev, hh.id, [
-            ['IP', hh.ip], ['ZONE', hh.zone], ['FLOWS', String(hh.flows)],
-            ['TECHNIQUE', hh.tech], ['RISK', fmt(hh.risk, 2) + ' ' + FS.riskState(hh.risk), rc]
-          ]);
+          var rows;
+          if (hh) {
+            rows = hostTipRows(h.id);
+          } else {
+            rows = [['NODE', n.nm]].concat((n.sub || []).map(function (s) { return ['·', s]; }));
+            if (h.id === 'tap') rows.push(['MODE', 'read-only SPAN/TAP mirror', 'teal']);
+          }
+          ttShow(ev, n.nm, rows);
         });
         c.addEventListener('mouseleave', ttHide);
         c.addEventListener('click', function () {
           ttHide();
-          S.host = h.id; renderScreen();
           var hh = D.HOSTS.find(function (x) { return x.id === h.id; });
-          if (hh) toast('Host selected', hh.id + ' · ' + hh.ip + ' · risk ' + fmt(hh.risk, 2));
+          if (!hh) { toast('Node', NN[h.id].nm + ' — context node, not a monitored asset', 'amber'); return; }
+          S.host = h.id; renderScreen();
+          toast('Host selected', hh.id + ' · ' + hh.ip + ' · risk ' + fmt(hh.risk, 2));
         });
       });
       canvas.appendChild(svg);
@@ -1121,7 +1222,7 @@
       var head = panel('Campaign', C.id, (function () {
         var b = div('panel-bd');
         var kv = div();
-        kv.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:9px;color:#737871;letter-spacing:1.2px;text-transform:uppercase';
+        kv.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px;color:#737871;letter-spacing:1.2px;text-transform:uppercase';
         kv.innerHTML =
           '<div>STARTED<br><span class="txt-white" style="font-family:var(--serif);font-size:18px">' + C.started + '</span></div>' +
           '<div>HOSTS TOUCHED<br><span class="txt-white" style="font-family:var(--serif);font-size:18px">' + C.hosts + '</span></div>' +
@@ -1214,17 +1315,27 @@
     title: 'Replay',
     build: function (root) {
       var R = S.replay;
+      /* clamp before touching the series: selWindow can be stale (boot
+         default 68) when the live payload has fewer windows than the
+         fixtures — otherwise D.windows[R.selWindow] is undefined */
+      var wn = D.windows.length;
+      if (!wn) return;
+      if (R.t > wn - 1) R.t = wn - 1;
+      if (R.selWindow > wn - 1) R.selWindow = wn - 1;
       var ww = D.windows[R.selWindow];
       var cap = div('panel');
       cap.style.margin = '12px 12px 0';
       var top = div('rp-top');
       top.innerHTML =
         '<div><div class="smallcaps">Capture</div><div class="rp-capture-name">ctu13-neris-capture.netflow</div>' +
-        '<div class="rp-capmeta">CSV · 742 MB · 92 · 2.0 s windows · 3.84.0 · rules ' + (R.rulesDisabled ? 'DISABLED' : 'ENABLED') + '</div></div>';
+        '<div class="rp-capmeta">CSV · 742 MB · ' + D.windows.length + ' · 2.0 s windows · 3.84.0 · rules ' + (R.rulesDisabled ? 'DISABLED' : 'ENABLED') + '</div></div>';
+      var flagged = D.windows.filter(function (w) { return w.alert; }).length;
+      var peakIdx = 0;
+      D.windows.forEach(function (w, i) { if (w.risk > D.windows[peakIdx].risk) peakIdx = i; });
       var stats = div('rp-stats');
       stats.innerHTML =
-        '<div class="cell"><div class="k">Flagged</div><div class="v red">11</div><div class="s">12.6% of windows</div></div>' +
-        '<div class="cell"><div class="k">Peak</div><div class="v">0.775</div><div class="s">W 028 · 0:56.0</div></div>' +
+        '<div class="cell"><div class="k">Flagged</div><div class="v red">' + flagged + '</div><div class="s">' + (D.windows.length ? (flagged / D.windows.length * 100).toFixed(1) : '0.0') + '% of windows</div></div>' +
+        '<div class="cell"><div class="k">Peak</div><div class="v">' + fmt(D.windows[peakIdx].risk) + '</div><div class="s">W ' + pad3(peakIdx) + ' · ' + relClock(peakIdx * 2) + '</div></div>' +
         '<div class="cell"><div class="k">Records</div><div class="v">5,265</div><div class="s">52,281 packets</div></div>';
       top.appendChild(stats);
       var rightBtns = div('flexr');
@@ -1247,15 +1358,24 @@
         b.textContent = txt; b.onclick = fn;
         return b;
       }
-      ctr.appendChild(mkBtn('|◀', function () { R.t = 0; R.selWindow = 0; syncClock(); renderScreen(); }));
-      ctr.appendChild(mkBtn('◀◀', function () { R.t = Math.max(0, R.t - 1); R.selWindow = R.t; renderScreen(); }));
+      /* transport seeks are floored + clamped: playback leaves a fractional
+         R.t, and a fractional/oversized selWindow indexes an undefined
+         window (the blank-screen bug) */
+      function seek(t) {
+        R.t = Math.max(0, Math.min(D.windows.length - 1, Math.floor(t)));
+        R.selWindow = R.t;
+        renderScreen();
+      }
+      ctr.appendChild(mkBtn('|◀', function () { seek(0); }));
+      ctr.appendChild(mkBtn('◀◀', function () { seek(R.t - 1); }));
       ctr.appendChild(mkBtn(R.playing ? '❚❚' : '▶', function () {
         R.playing = !R.playing;
         if (R.playing) startPlayback();
+        else R.t = Math.floor(R.t);
         renderScreen();
       }, 'on'));
-      ctr.appendChild(mkBtn('▶▶', function () { R.t = Math.min(D.windows.length - 1, R.t + 1); R.selWindow = R.t; renderScreen(); }));
-      ctr.appendChild(mkBtn('▶|', function () { R.t = D.windows.length - 1; R.selWindow = R.t; renderScreen(); }));
+      ctr.appendChild(mkBtn('▶▶', function () { seek(R.t + 1); }));
+      ctr.appendChild(mkBtn('▶|', function () { seek(D.windows.length - 1); }));
       /* forensic jumps: first alert · peak · recovery */
       function jumpTo(pred) {
         var idx = -1;
@@ -1269,7 +1389,7 @@
         return bi;
       }
       ctr.appendChild(mkBtn('⤓ ALERT', function () { jumpTo(function (w) { return w.alert; }); }));
-      ctr.appendChild(mkBtn('⤓ PEAK', function () { R.t = peakIndex(); R.selWindow = R.t; R.playing = false; renderScreen(); }));
+      ctr.appendChild(mkBtn('⤓ PEAK', function () { R.playing = false; seek(peakIndex()); }));
       ctr.appendChild(mkBtn('⤓ RECOVERY', function () { var pk = peakIndex(); jumpTo(function (w, i) { return i > pk && !w.alert; }); }));
       var spd = div('seg');
       [1, 2, 4, 8].forEach(function (sx) {
@@ -1285,7 +1405,8 @@
       ctr.appendChild(st);
       var clearInfo = div('smallcaps');
       clearInfo.style.marginLeft = 'auto';
-      clearInfo.innerHTML = 'WINDOW ' + pad3(R.t + 1) + ' · ' + relClock(Math.max(0, (R.t - 1) * 2)) + ' – ' + relClock(R.t * 2) + ' / ' + relClock(89 * 2) + ' · next CLEAR in 27.0 s';
+      clearInfo.id = 'rpClearInfo';
+      clearInfo.innerHTML = clearInfoHtml(R.selWindow);
       ctr.appendChild(clearInfo);
       cap.appendChild(ctr);
 
@@ -1300,25 +1421,60 @@
       var tw = div('chart-wrap');
       var obs = D.windows.map(function (x) { return x.risk; });
       var pps = D.windows.map(function (x) { return x.pps / 6500; });
-      var svgT = FS.seriesChart({ w: 1150, h: 170, obs: obs, threshold: 0.65, nowIndex: R.t, area: true, vgrid: [0, 18, 36, 54, 72, 89] });
+      var nObs = obs.length;
+      /* gridlines derived from the actual window count (was hardcoded 89) */
+      var vg = [];
+      for (var g = 0; g < 6; g++) vg.push(Math.round(g * (nObs - 1) / 5));
+      /* playIndex (not nowIndex): this line+dot is the transport playhead,
+         moved live by startPlayback via FS.tickPlayheads() */
+      var tlCfg = { w: 1150, h: 170, obs: obs, threshold: 0.65, playIndex: R.t, area: true, vgrid: vg };
+      tlCfgRef = tlCfg;
+      var svgT = FS.seriesChart(tlCfg);
       /* overlay packet line */
       var svgP = FS.seriesChart({ w: 1150, h: 170, obs: pps, yMax: 1.15, area: false });
       svgP.style.cssText = 'position:absolute;inset:0;pointer-events:none';
       svgP.querySelector('svg') && svgP.querySelector('svg').remove();
       tw.appendChild(svgT);
       tw.appendChild(svgP);
-      /* pin labels */
+      /* pins — computed from the real series: first threshold crossing,
+         actual peak, first post-peak clear (were evenly spread decoration) */
       var pins = div();
-      pins.style.cssText = 'position:absolute;top:2px;left:0;right:0;display:flex;justify-content:space-between;padding:0 8%;font-size:8px;color:#737871;letter-spacing:1px;pointer-events:none';
-      pins.innerHTML = '<span class="txt-red">T1871 ALERT</span><span>PEAK</span><span class="txt-green">CLEAR</span>';
+      pins.style.cssText = 'position:absolute;top:2px;left:0;right:0;height:14px;font-size:12px;letter-spacing:1px;pointer-events:none';
+      if (nObs > 1) {
+        function pinX(i) { var mL = 34, iw = 1150 - 34 - 10; return ((mL + (i / (nObs - 1)) * iw) / 1150 * 100).toFixed(2); }
+        var alertIdx = -1;
+        for (var ai = 0; ai < nObs; ai++) { if (D.windows[ai].alert) { alertIdx = ai; break; } }
+        var peakIdx2 = 0;
+        D.windows.forEach(function (w, i) { if (w.risk > D.windows[peakIdx2].risk) peakIdx2 = i; });
+        var clearIdx = -1;
+        for (var ci = peakIdx2 + 1; ci < nObs; ci++) { if (!D.windows[ci].alert) { clearIdx = ci; break; } }
+        var pinHtml = '';
+        if (alertIdx >= 0) pinHtml += '<span class="txt-red" style="position:absolute;left:' + pinX(alertIdx) + '%;transform:translateX(-50%)">⤓ ALERT · W' + pad3(alertIdx) + '</span>';
+        pinHtml += '<span style="position:absolute;left:' + pinX(peakIdx2) + '%;transform:translateX(-50%);color:#8A9088">⤓ PEAK · W' + pad3(peakIdx2) + '</span>';
+        if (clearIdx >= 0) pinHtml += '<span class="txt-green" style="position:absolute;left:' + pinX(clearIdx) + '%;transform:translateX(-50%)">⤓ CLEAR · W' + pad3(clearIdx) + '</span>';
+        pins.innerHTML = pinHtml;
+      }
       tw.appendChild(pins);
       tw.style.cursor = 'crosshair';
+      /* hover tooltip: details of the window under the cursor */
+      tw.addEventListener('mousemove', function (ev) {
+        var rect = tw.getBoundingClientRect();
+        var frac = (ev.clientX - rect.left) / rect.width;
+        var hi = Math.max(0, Math.min(nObs - 1, Math.floor(frac * nObs)));
+        var wv = D.windows[hi];
+        if (!wv) { ttHide(); return; }
+        ttShow(ev, 'W' + pad3(hi) + ' · ' + relClock(hi * 2), [
+          ['STAGE', wv.stage], ['TECHNIQUE', wv.technique], ['TARGET', wv.target],
+          ['RISK', fmt(wv.risk) + ' ' + FS.riskState(wv.risk), wv.risk >= 0.65 ? 'red' : wv.risk >= 0.45 ? 'amber' : 'teal'],
+          ['PACKETS', (wv.pps / 1000).toFixed(1) + 'k pkt/s'], ['ALERT', wv.alert ? 'RAISED' : '—', wv.alert ? 'red' : '']
+        ]);
+      });
+      tw.addEventListener('mouseleave', ttHide);
       tw.addEventListener('click', function (ev) {
         var rect = tw.getBoundingClientRect();
         var frac = (ev.clientX - rect.left) / rect.width;
-        R.t = Math.max(0, Math.min(D.windows.length - 1, Math.round(frac * (D.windows.length - 1))));
-        R.selWindow = R.t; R.playing = false;
-        renderScreen();
+        R.playing = false;
+        seek(Math.round(frac * (D.windows.length - 1)));
       });
       tl.appendChild(tw);
       cap.appendChild(tl);
@@ -1327,13 +1483,44 @@
       /* main split: flow records + side */
       var split = div('rp-split');
       var flows = div('grow');
+      function winHeadHtml(w, sw) {
+        return '<b>W ' + pad3(sw + 1) + '</b> <span>' + clockStr(w.tsec - 2) + '</span>' +
+          '<span>' + esc(w.stage) + '</span><span>58 records</span><span>' + (w.alert ? '4 shown' : '10 shown') + '</span>' +
+          '<span>2.4k pkt/s</span><span class="' + (w.alert ? 'rk' : 'am') + '">risk ' + w.risk.toFixed(3) + '</span>' +
+          '<span class="txt-mut">' + esc(w.technique) + ' ' + esc(w.technique === '—' ? '' : 'Application Layer Protocol') + '</span>';
+      }
+      function flowRowHtml(f) {
+        return '<tr' + (f.path ? ' class="path"' : '') + '>' +
+          '<td class="fid">' + f.t + '</td><td class="fid">#' + f.fid + '</td>' +
+          '<td>' + f.src + ':' + f.sp + '</td><td>→ ' + f.dst + ':' + f.dp + '</td>' +
+          '<td>' + f.pr + '</td><td>' + f.flags + '</td><td class="r">' + f.pkts + '</td>' +
+          '<td class="r">' + f.bytes + '</td><td class="r">' + f.dur + '</td>' +
+          '<td style="color:' + FS.riskColor(f.risk) + '">' + f.risk.toFixed(2) + '</td>' +
+          '<td>' + tag(f.verdict, f.verdict === 'MALICIOUS' ? 'red' : f.verdict === 'SUSPECT' ? 'amber' : 'green') + '</td></tr>';
+      }
+      function sideHtml(w) {
+        return '<div class="sv"><div class="k">Model Risk · ' + (R.rulesDisabled ? 'Rules Off' : 'Rules On') + '</div>' +
+          '<div class="v ' + (w.risk >= 0.65 ? 'red' : w.risk >= 0.45 ? 'amber' : 'green') + '">' + w.risk.toFixed(2) + '</div>' +
+          '<div class="s">' + (w.risk >= 0.65 ? 'over 0.65 — alert raised' : w.risk >= 0.45 ? 'elevated' : 'under 0.65') + '</div></div>' +
+          '<div class="kv"><span class="k">Target</span><span class="v">' + esc(w.target) + '</span></div>' +
+          '<div class="kv"><span class="k">Stage</span><span class="v">' + esc(w.stage) + '</span></div>' +
+          '<div class="kv"><span class="k">Technique</span><span class="v">' + esc(w.technique) + '</span></div>' +
+          '<div class="kv"><span class="k">Tactic</span><span class="v">' + esc(tacticOf(w.stage)) + '</span></div>' +
+          '<div class="kv"><span class="k">Records</span><span class="v">' + w.flow + ' · ' + (w.alert ? '4' : '1') + ' on path</span></div>' +
+          '<div class="kv"><span class="k">Volume</span><span class="v">' + (w.pps / 1000).toFixed(1) + 'k pkt/s</span></div>' +
+          '<div class="sv"><div class="k">Rollout +2 to +10 s</div>' + FS.lattice(8, w.alert ? [3] : []).outerHTML + '' +
+          '<div class="s" style="margin-top:4px">peak ' + w.peak.toFixed(3) + (w.alert ? ' at +2s' : ' at +10s') + '</div></div>' +
+          '<div class="sv grow"><div class="k">Attribution · input × gradient</div><div style="margin-top:6px">' +
+          attributionRows() + '</div></div>';
+      }
+      function clearInfoHtml(sw) {
+        return 'WINDOW ' + pad3(sw + 1) + ' · ' + relClock(Math.max(0, (sw - 1) * 2)) + ' – ' + relClock(sw * 2) + ' / ' + relClock(captureLen() * windowSec()) + ' · next CLEAR in 27.0 s';
+      }
       var fp = panel('Flow Records', null, (function () {
         var box = div();
         var groupHead = div('win-head');
-        groupHead.innerHTML = '<b>W ' + pad3(R.selWindow + 1) + '</b> <span>' + clockStr(ww.tsec - 2) + '</span>' +
-          '<span>' + ww.stage + '</span><span>58 records</span><span>' + (ww.alert ? '4 shown' : '10 shown') + '</span>' +
-          '<span>2.4k pkt/s</span><span class="' + (ww.alert ? 'rk' : 'am') + '">risk ' + ww.risk.toFixed(3) + '</span>' +
-          '<span class="txt-mut">' + ww.technique + ' ' + esc(ww.technique === '—' ? '' : 'Application Layer Protocol') + '</span>';
+        groupHead.id = 'rpWinHead';
+        groupHead.innerHTML = winHeadHtml(ww, R.selWindow);
         box.appendChild(groupHead);
         var tbl = document.createElement('table');
         tbl.className = 'tbl flow-tbl';
@@ -1341,18 +1528,8 @@
           ['T (S)', 'FLOW', 'SOURCE', 'DESTINATION', 'PROT', 'FLAGS', 'PKTS ↑/↓', 'BYTES ↑/↓', 'DUR', 'RISK', 'VERDICT']
             .map(function (h) { return '<th>' + h + '</th>'; }).join('') + '</tr></thead>';
         var tb = document.createElement('tbody');
-        genFlows(R.selWindow).forEach(function (f) {
-          var tr = document.createElement('tr');
-          if (f.path) tr.className = 'path';
-          tr.innerHTML = '<td class="fid">' + f.t + '</td><td class="fid">#' + f.fid + '</td>' +
-            '<td>' + f.src + ':' + f.sp + '</td><td>→ ' + f.dst + ':' + f.dp + '</td>' +
-            '<td>' + f.pr + '</td><td>' + f.flags + '</td><td class="r">' + f.pkts + '</td>' +
-            '<td class="r">' + f.bytes + '</td><td class="r">' + f.dur + '</td>' +
-            '<td style="color:' + FS.riskColor(f.risk) + '">' + f.risk.toFixed(2) + '</td>' +
-            '<td>' + tag(f.verdict, f.verdict === 'MALICIOUS' ? 'red' : f.verdict === 'SUSPECT' ? 'amber' : 'green') + '</td>';
-          tr.title = 'flow #' + f.fid + ' · ' + f.src + ' → ' + f.dst;
-          tb.appendChild(tr);
-        });
+        tb.id = 'rpFlowBody';
+        tb.innerHTML = genFlows(R.selWindow).map(flowRowHtml).join('');
         tbl.appendChild(tb);
         box.appendChild(tbl);
         return box;
@@ -1362,22 +1539,29 @@
 
       /* right side */
       var side = div('rp-side');
-      side.innerHTML =
-        '<div class="sv"><div class="k">Model Risk · ' + (R.rulesDisabled ? 'Rules Off' : 'Rules On') + '</div>' +
-        '<div class="v ' + (ww.risk >= 0.65 ? 'red' : ww.risk >= 0.45 ? 'amber' : 'green') + '">' + ww.risk.toFixed(2) + '</div>' +
-        '<div class="s">' + (ww.risk >= 0.65 ? 'over 0.65 — alert raised' : ww.risk >= 0.45 ? 'elevated' : 'under 0.65') + '</div></div>' +
-        '<div class="kv"><span class="k">Target</span><span class="v">' + esc(ww.target) + '</span></div>' +
-        '<div class="kv"><span class="k">Stage</span><span class="v">' + esc(ww.stage) + '</span></div>' +
-        '<div class="kv"><span class="k">Technique</span><span class="v">' + esc(ww.technique) + '</span></div>' +
-        '<div class="kv"><span class="k">Tactic</span><span class="v">' + esc(tacticOf(ww.stage)) + '</span></div>' +
-        '<div class="kv"><span class="k">Records</span><span class="v">' + ww.flow + ' · ' + (ww.alert ? '4' : '1') + ' on path</span></div>' +
-        '<div class="kv"><span class="k">Volume</span><span class="v">' + (ww.pps / 1000).toFixed(1) + 'k pkt/s</span></div>' +
-        '<div class="sv"><div class="k">Rollout +2 to +10 s</div>' + FS.lattice(8, ww.alert ? [3] : []).outerHTML + '' +
-        '<div class="s" style="margin-top:4px">peak ' + ww.peak.toFixed(3) + (ww.alert ? ' at +2s' : ' at +10s') + '</div></div>' +
-        '<div class="sv grow"><div class="k">Attribution · input × gradient</div><div style="margin-top:6px">' +
-        attributionRows() + '</div></div>';
+      side.id = 'rpSide';
+      side.innerHTML = sideHtml(ww);
       split.appendChild(side);
       root.appendChild(split);
+
+      /* live sync hook: the playback ticker calls rpSyncRef when the integer
+         window under the playhead changes — detail panels follow the moving
+         line without a full re-render (see startPlayback) */
+      rpSyncWin = R.selWindow;
+      rpSyncRef = function (sw) {
+        var w2 = D.windows[sw];
+        if (!w2) return;
+        var wh = document.getElementById('rpWinHead');
+        var fb = document.getElementById('rpFlowBody');
+        var sd = document.getElementById('rpSide');
+        var ci = document.getElementById('rpClearInfo');
+        if (wh) wh.innerHTML = winHeadHtml(w2, sw);
+        if (fb) fb.innerHTML = genFlows(sw).map(flowRowHtml).join('');
+        if (sd) sd.innerHTML = sideHtml(w2);
+        if (ci) ci.innerHTML = clearInfoHtml(sw);
+        var pillEl = fp.querySelector('.panel-hd .pill');
+        if (pillEl) pillEl.textContent = (sw + 1) + ' ON ATTACK PATH';
+      };
 
       function clockStr(s) { return Math.floor(s / 60) + ':' + ('0' + (Math.floor(s) % 60)).slice(-2) + '.' + (Math.floor((s % 1) * 10)); }
       function relClock(s) { s = Math.max(0, s); return Math.floor(s / 60) + ':' + ('0' + (Math.floor(s) % 60)).slice(-2) + '.' + Math.floor((s % 1) * 10); }
@@ -1425,16 +1609,28 @@
   };
 
   var playTimer = null;
+  var tlCfgRef = null;   /* active replay timeline cfg (playhead hook) */
+  var rpSyncRef = null;  /* per-window detail sync (flow table + side panel) */
+  var rpSyncWin = -1;    /* last integer window the detail panels rendered */
   function startPlayback() {
     if (playTimer) clearInterval(playTimer);
     playTimer = setInterval(function () {
       if (!S.replay.playing || S.screen !== 'replay') { clearInterval(playTimer); playTimer = null; return; }
-      S.replay.t = (S.replay.t + S.replay.speed / 4) % (D.windows.length - 1);
+      var last = Math.max(1, D.windows.length - 1); /* single-window series must not mod-by-zero */
+      S.replay.t = (S.replay.t + S.replay.speed / 4) % last;
       S.replay.selWindow = Math.floor(S.replay.t);
       var clock = $('rp-clock');
       if (clock) {
         clock.textContent = Math.floor((S.replay.t * 2) / 60) + ':' + ('0' + (Math.floor(S.replay.t * 2) % 60)).slice(-2) + '.' + Math.floor(((S.replay.t * 2) % 1) * 10);
         var st = $('rp-state'); if (st) { st.textContent = '■ PLAYING'; st.className = 'rp-state'; }
+      }
+      /* move the timeline playhead + curve dot without a full re-render */
+      if (tlCfgRef) { tlCfgRef.playIndex = S.replay.t; FS.tickPlayheads(); }
+      /* when the integer window under the playhead changes, sync the flow
+         records + right-side details to the new window */
+      if (rpSyncRef && S.replay.selWindow !== rpSyncWin) {
+        rpSyncWin = S.replay.selWindow;
+        rpSyncRef(rpSyncWin);
       }
     }, 500);
   }
@@ -1532,9 +1728,9 @@
         el('path', { d: 'M300,180 C400,120 480,90 560,80', fill: 'none', stroke: '#E15252', 'stroke-width': 2, 'stroke-dasharray': '6 4' }, svg);
         el('path', { d: 'M300,190 C420,215 480,230 560,235', fill: 'none', stroke: '#E0A84A', 'stroke-width': 1.6, 'stroke-dasharray': '4 4' }, svg);
         el('path', { d: 'M300,200 C420,260 480,278 560,292', fill: 'none', stroke: '#E0A84A', 'stroke-width': 1.2, 'stroke-dasharray': '3 4', opacity: .7 }, svg);
-        var t = el('text', { x: 430, y: 60, 'font-size': 8, fill: '#565B54' }, svg); t.textContent = 'REACHED · 12 hits';
-        var t2 = el('text', { x: 430, y: 222, 'font-size': 8, fill: '#565B54' }, svg); t2.textContent = '58% · +8s';
-        var t3 = el('text', { x: 430, y: 286, 'font-size': 8, fill: '#565B54' }, svg); t3.textContent = '55N · T1021';
+        var t = el('text', { x: 430, y: 60, 'font-size': 10, fill: '#565B54' }, svg); t.textContent = 'REACHED · 12 hits';
+        var t2 = el('text', { x: 430, y: 222, 'font-size': 10, fill: '#565B54' }, svg); t2.textContent = '58% · +8s';
+        var t3 = el('text', { x: 430, y: 286, 'font-size': 10, fill: '#565B54' }, svg); t3.textContent = '55N · T1021';
         blast.appendChild(svg);
         function bnode(x, y, cls, k, nm, ip, s, kcls) {
           var d = div('bnode ' + cls);
@@ -1662,7 +1858,7 @@
         detailBody.innerHTML =
           '<div class="smallcaps">SELECTED EVENT · ' + esc(e.ts) + ' UTC</div>' +
           '<div class="big-msg">' + esc(e.msg) + '</div>' +
-          '<div class="meta" style="display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">' +
+          '<div class="meta" style="display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">' +
           '<span>source <b style="color:var(--text2)">' + esc(e.src) + '</b></span>' +
           '<span>severity <b style="color:' + st[2] + '">' + e.sev + ' · ' + st[0].split(' — ')[1] + '</b></span>' +
           '<span>host <b style="color:var(--text2)">' + esc(e.host) + '</b></span></div>' +
@@ -1777,7 +1973,7 @@
         var lat = FS.lattice(12, [1, 2, 3]);
         tlw.appendChild(lat);
         var lab = div('tick-labels');
-        lab.style.display = 'flex'; lab.style.justifyContent = 'space-between'; lab.style.fontSize = '8px'; lab.style.color = '#737871'; lab.style.marginTop = '3px';
+        lab.style.display = 'flex'; lab.style.justifyContent = 'space-between'; lab.style.fontSize ='10px '; lab.style.color = '#737871'; lab.style.marginTop = '3px';
         lab.innerHTML = '<span>flow start</span><span>+1s</span><span>+3s</span><span>+5s</span>';
         tlw.appendChild(lab);
         var note = div('hint');
@@ -1843,7 +2039,7 @@
       var ntg = div('nt-grid');
       ntg.innerHTML =
         '<div class="cell"><div class="k">Mode</div><div class="big">NO-TOUCH MODE</div></div>' +
-        '<div class="cell"><div class="s" style="font-size:10px;color:var(--text2)">This deployment is <b>PASSIVE / ONE-WAY</b>. Netra reads a SPAN/TAP mirror and never injects, resets, or reshapes production traffic. Containment actions exist as forecasts of network consequence only.</b></div></div>' +
+        '<div class="cell"><div class="s" style="font-size:12px;color:var(--text2)">This deployment is <b>PASSIVE / ONE-WAY</b>. Netra reads a SPAN/TAP mirror and never injects, resets, or reshapes production traffic. Containment actions exist as forecasts of network consequence only.</b></div></div>' +
         '<div class="cell" style="text-align:right"><div class="k">State</div><div class="big" style="font-size:15px">● ACTIVE</div></div>';
       nt.appendChild(ntg);
       wrap.appendChild(nt);
@@ -1936,24 +2132,27 @@
     if (old) old.parentNode.removeChild(old);
     var b = document.createElement('span');
     b.id = 'prov-badge';
-    b.className = 'prov ' + (P.live ? 'live' : 'sim');
-    b.textContent = P.live ? 'LIVE DATA' : 'SIMULATED';
+    var mode = P.mode || (P.live ? 'LIVE' : 'FIXTURES');
+    b.className = 'prov ' + (mode === 'LIVE' ? 'live' : 'sim');
+    b.textContent = mode === 'REPLAY' ? 'REPLAY DATA'
+      : mode === 'SIMULATED' ? 'SIMULATED DATA'
+      : mode === 'LIVE' ? 'LIVE DATA' : 'SIMULATED';
     b.title = P.live
-      ? 'Pipeline data · source: ' + P.source + ' · generated ' + P.generatedAt + (P.errors.length ? ' · fallbacks: ' + P.errors.join('; ') : '')
+      ? 'Pipeline data (' + mode + ') · source: ' + P.source + ' · generated ' + P.generatedAt + (P.errors.length ? ' · fallbacks: ' + P.errors.join('; ') : '')
       : 'No pipeline data.json found — displaying built-in simulation fixtures';
     host.insertBefore(b, host.firstChild);
   }
 
   function boot() {
-    /* nav — icon + label, keyboard accessible */
+    /* nav — valorant-style chevron + label, keyboard accessible */
     var navEl = $('nav');
     var items = [
-      ['overview', 'Overview', '\u25C8'], ['forecast', 'Forecast Stage', '\u25C9'],
-      ['investigation', 'Investigation', '\u25CE'], ['network', 'Network', '\u21AF\uFE0E'],
-      ['predictions', 'Predictions', '\u25F4'], ['campaign', 'Campaign', '\u2691'],
-      ['attack', 'ATT&CK', '\u25FE'], ['replay', 'Replay', '\u25C6'],
-      ['incidents', 'Incidents', '\u2690'], ['events', 'Events', '\u2261'],
-      ['model', 'Model', '\u2A20'], ['controls', 'Controls', '\u2699'],
+      ['overview', 'Overview', '\u276F'], ['forecast', 'Forecast Stage', '\u276F'],
+      ['investigation', 'Investigation', '\u276F'], ['network', 'Network', '\u276F'],
+      ['predictions', 'Predictions', '\u276F'], ['campaign', 'Campaign', '\u276F'],
+      ['attack', 'ATT&CK', '\u276F'], ['replay', 'Replay', '\u276F'],
+      ['incidents', 'Incidents', '\u276F'], ['events', 'Events', '\u276F'],
+      ['model', 'Model', '\u276F'], ['controls', 'Controls', '\u276F'],
       /* section headers rendered between items (index -> label) */
       ['__sec__', 'OPS', null, 1], ['__sec__', 'EXPLORE', null, 4], ['__sec__', 'WORKSPACE', null, 8], ['__sec__', 'SYSTEM', null, 11]
     ];
@@ -2002,8 +2201,16 @@
     /* keyboard: arrows in replay */
     document.addEventListener('keydown', function (ev) {
       if (S.screen !== 'replay') return;
-      if (ev.key === 'ArrowRight') { S.replay.t = Math.min(D.windows.length - 1, S.replay.t + 1); S.replay.selWindow = S.replay.t; renderScreen(); }
-      if (ev.key === 'ArrowLeft') { S.replay.t = Math.max(0, S.replay.t - 1); S.replay.selWindow = S.replay.t; renderScreen(); }
+      var wn = D.windows.length;
+      if (!wn) return;
+      if (ev.key === 'ArrowRight') {
+        S.replay.t = Math.min(wn - 1, Math.floor(S.replay.t) + 1);
+        S.replay.selWindow = S.replay.t; renderScreen();
+      }
+      if (ev.key === 'ArrowLeft') {
+        S.replay.t = Math.max(0, Math.floor(S.replay.t) - 1);
+        S.replay.selWindow = S.replay.t; renderScreen();
+      }
       if (ev.key === ' ') { ev.preventDefault(); S.replay.playing = !S.replay.playing; if (S.replay.playing) startPlayback(); renderScreen(); }
     });
 
@@ -2104,19 +2311,34 @@
     });
     return set;
   }
-  function fieldPick(mx, my) {
-    if (!fieldGeom) return;
+  function nearestHost(mx, my) {
+    if (!fieldGeom) return null;
     var best = null, bd = 1e9;
     FIELD_ZONES.forEach(function (z) {
       z.hosts.forEach(function (h) {
         var p = fieldPos(h.id); if (!p) return;
         var q = fieldProj(p.x, p.y, fieldGeom);
-        var x = q.x, y = q.y;
-        var d = (x - mx) * (x - mx) + (y - my) * (y - my);
+        var d = (q.x - mx) * (q.x - mx) + (q.y - my) * (q.y - my);
         if (d < bd) { bd = d; best = h.id; }
       });
     });
-    if (best && bd < 400) {
+    return bd < 400 ? best : null;
+  }
+  function hostTipRows(id) {
+    var hh = D.HOSTS.find(function (x) { return x.id === id; });
+    if (hh) {
+      var rc = hh.risk >= 0.65 ? 'red' : hh.risk >= 0.45 ? 'amber' : 'teal';
+      return [
+        ['IP', hh.ip], ['ZONE', hh.zone], ['FLOWS', String(hh.flows)],
+        ['TECHNIQUE', hh.tech], ['RISK', fmt(hh.risk, 2) + ' ' + FS.riskState(hh.risk), rc]
+      ];
+    }
+    var z = FIELD_ZONES.find(function (zz) { return zz.hosts.some(function (h) { return h.id === id; }); });
+    return [['ZONE', z ? z.nm : '—'], ['STATUS', 'contextual node']];
+  }
+  function fieldPick(mx, my) {
+    var best = nearestHost(mx, my);
+    if (best) {
       fieldSel = (fieldSel === best) ? null : best;
       updateFieldCtx();
     }
@@ -2175,7 +2397,7 @@
     fieldTarget = 30 + Math.round(maxRisk * 26);
     while (packets.length < fieldTarget) fieldSpawn();
     /* iso ground grid + zone rails + labels */
-    ctx.font = '8.5px \'IBM Plex Mono\', monospace'; ctx.textAlign = 'center';
+    ctx.font = '10.5px \'IBM Plex Mono\', monospace'; ctx.textAlign = 'center';
     [0.25, 0.5, 0.75].forEach(function (v) {
       var a = fieldProj(0.02, v, fieldGeom), b2 = fieldProj(0.98, v, fieldGeom);
       ctx.strokeStyle = 'rgba(244,245,241,.045)'; ctx.lineWidth = 1;
@@ -2187,7 +2409,12 @@
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
       var lp = fieldProj(z.fx, -0.04, fieldGeom);
       ctx.fillStyle = 'rgba(111,125,122,.85)';
-      ctx.fillText(z.nm, lp.x, lp.y - 12);
+      /* explicit center + text-width clamp: the frame's hud leaves
+         textAlign='right', which right-aligned this label and clipped the
+         first one off-canvas. fieldGeom.W is CSS px (ctx is dpr-scaled). */
+      ctx.textAlign = 'center';
+      var hw = ctx.measureText(z.nm).width / 2 + 6;
+      ctx.fillText(z.nm, Math.max(hw, Math.min(fieldGeom.W - hw, lp.x)), lp.y - 12);
     });
     /* links — a selected node highlights its edges; everything else recedes */
     var nbrs = fieldSel ? fieldNeighbors(fieldSel) : null;
@@ -2225,7 +2452,7 @@
         var alpha = (fieldSel && !isSel && !linked) ? 0.3 : 1;
         var pulse = (h.cls === 'hot' || h.cls === 'crit') ? (Math.sin(t * 2.2 + p.y * 9) * 0.5 + 0.5) * 0.4 + 0.75 : 1;
         drawIsoCube(ctx, p.x, p.y, col, isSel, alpha * pulse);
-        ctx.font = '8.5px \'IBM Plex Mono\', monospace'; ctx.textAlign = 'center';
+        ctx.font = '10.5px \'IBM Plex Mono\', monospace'; ctx.textAlign = 'center';
         ctx.globalAlpha = alpha;
         ctx.fillStyle = isSel ? '#F4F5F1' : h.cls === 'hot' ? '#E15252' : h.cls === 'warm' ? '#E0A84A' : 'rgba(166,179,176,.8)';
         ctx.fillText(h.id, p.x, p.y + 15);
@@ -2235,7 +2462,7 @@
     /* hud */
     ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(201,255,63,.55)';
     var activeHot = packets.filter(function (p) { return p.cls === 'hot'; }).length;
-    ctx.font = '8.5px \'IBM Plex Mono\', monospace';
+    ctx.font = '10.5px \'IBM Plex Mono\', monospace';
     ctx.fillText('THREAT FLOWS ' + String(activeHot).padStart(2, '0'), px, H - py + 24);
     ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(111,125,122,.8)';
     ctx.fillText('T+' + Math.floor(t) + 's', W - px, H - py + 24);
