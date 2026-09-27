@@ -21,7 +21,7 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
     stream=sys.stdout,
 )
-log = logging.getLogger("fluxshield")
+log = logging.getLogger("netra")
 
 
 def rss_mb() -> float:

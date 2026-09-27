@@ -1,7 +1,7 @@
 """Netra pipeline -> UI data emitter.
 
 Call `emit(...)` (or `build_document` + `write_document`) from your ML
-pipeline to produce `fluxshield/data.json`, the single document the
+pipeline to produce `data.json`, the single document the
 dashboard loads at boot. The schema is defined in DATA_CONTRACT.md (v1);
 the coercion functions below mirror the UI's per-section validators
 (loader.js) so a document produced here always loads clean:
@@ -435,6 +435,26 @@ def emit(path: str = DEFAULT_PATH, *, m: Mapping[str, Any], **sections: Any) -> 
 if __name__ == "__main__":
     import sys
 
+    # 90-window capture (2.0 s each): recon ramp -> exploit burst ->
+    # containment -> recovery. Gives the UI's replay timeline a real shape.
+    def _series():
+        rows = []
+        for i in range(90):
+            if i < 30:
+                risk, stage, tech = 0.24 + i * 0.005, "RECON", "T1046"
+            elif i < 45:
+                risk, stage, tech = 0.39 + (i - 30) * 0.016, "EXPLOIT", "T1190"
+            elif i < 60:
+                risk, stage, tech = 0.63 + (i - 45) * 0.019, "EXPLOIT", "T1190"
+            elif i < 75:
+                risk, stage, tech = 0.917 - (i - 60) * 0.038, "CONTAIN", "T1190"
+            else:
+                risk, stage, tech = 0.35 - (i - 75) * 0.016, "RECOVERY", "T1042"
+            rows.append({"risk": round(max(0.05, min(0.92, risk)), 3), "stage": stage,
+                         "technique": tech,
+                         "target": "dmz-web" if stage in ("EXPLOIT", "CONTAIN") else "—"})
+        return rows
+
     doc = build_document(
         meta(source="netra-ml"),
         overview=overview(
@@ -453,13 +473,11 @@ if __name__ == "__main__":
                            "why": "linear baseline — underfits flow-rate interactions"},
                           {"nm": "ExtraTrees · 300", "f1": 99.89, "sel": True,
                            "why": "SELECTED FOR ROBUST GENERALIZATION"}]),
-        windows=windows([{"risk": 0.312, "stage": "RECON", "technique": "T1046"},
-                         {"risk": 0.355, "stage": "RECON", "technique": "T1046"},
-                         {"risk": 0.839, "stage": "EXPLOIT", "technique": "T1190",
-                          "target": "dmz-web", "tsec": 71003}],
-                        threshold=0.50),
+        windows=windows(_series(), threshold=0.50),
         hosts=hosts([{"id": "dmz-web", "ip": "10.0.3.10", "zone": "DMZ", "risk": 0.839,
-                      "tech": "T1190 · T1110", "flows": 412}]),
+                      "tech": "T1190 · T1110", "flows": 412},
+                     {"id": "srv-app", "ip": "10.0.2.40", "zone": "SERVERS", "risk": 0.611,
+                      "tech": "T1021", "flows": 188}]),
         branches=branches([{"id": "A", "p": 66, "tid": "T1190",
                             "desc": "Exploit the public-facing application", "ttE": "+6s",
                             "asset": "dmz-web", "risk": 0.953, "color": "red"}]),
