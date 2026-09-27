@@ -1441,7 +1441,8 @@
       var pins = div();
       pins.style.cssText = 'position:absolute;top:2px;left:0;right:0;height:14px;font-size:12px;letter-spacing:1px;pointer-events:none';
       if (nObs > 1) {
-        function pinX(i) { var mL = 34, iw = 1150 - 34 - 10; return ((mL + (i / (nObs - 1)) * iw) / 1150 * 100).toFixed(2); }
+        function pinX(i) { var mL = 34, iw = 1150 - 34 - 10; return +((mL + (i / (nObs - 1)) * iw) / 1150 * 100).toFixed(2); }
+        function pinTx(px) { return px < 6 ? 'translateX(0)' : px > 94 ? 'translateX(-100%)' : 'translateX(-50%)'; }
         var alertIdx = -1;
         for (var ai = 0; ai < nObs; ai++) { if (D.windows[ai].alert) { alertIdx = ai; break; } }
         var peakIdx2 = 0;
@@ -1449,9 +1450,9 @@
         var clearIdx = -1;
         for (var ci = peakIdx2 + 1; ci < nObs; ci++) { if (!D.windows[ci].alert) { clearIdx = ci; break; } }
         var pinHtml = '';
-        if (alertIdx >= 0) pinHtml += '<span class="txt-red" style="position:absolute;left:' + pinX(alertIdx) + '%;transform:translateX(-50%)">⤓ ALERT · W' + pad3(alertIdx) + '</span>';
-        pinHtml += '<span style="position:absolute;left:' + pinX(peakIdx2) + '%;transform:translateX(-50%);color:#8A9088">⤓ PEAK · W' + pad3(peakIdx2) + '</span>';
-        if (clearIdx >= 0) pinHtml += '<span class="txt-green" style="position:absolute;left:' + pinX(clearIdx) + '%;transform:translateX(-50%)">⤓ CLEAR · W' + pad3(clearIdx) + '</span>';
+        if (alertIdx >= 0) pinHtml += '<span class="txt-red" style="position:absolute;left:' + pinX(alertIdx) + '%;transform:' + pinTx(pinX(alertIdx)) + '">⤓ ALERT · W' + pad3(alertIdx) + '</span>';
+        if (peakIdx2 !== alertIdx) pinHtml += '<span style="position:absolute;left:' + pinX(peakIdx2) + '%;transform:' + pinTx(pinX(peakIdx2)) + ';color:#8A9088">⤓ PEAK · W' + pad3(peakIdx2) + '</span>';
+        if (clearIdx >= 0 && clearIdx !== peakIdx2 && clearIdx !== alertIdx) pinHtml += '<span class="txt-green" style="position:absolute;left:' + pinX(clearIdx) + '%;transform:' + pinTx(pinX(clearIdx)) + '">⤓ CLEAR · W' + pad3(clearIdx) + '</span>';
         pins.innerHTML = pinHtml;
       }
       tw.appendChild(pins);
@@ -1644,24 +1645,32 @@
       var panelWrap = div('panel');
       panelWrap.style.cssText = 'flex:1;display:flex;flex-direction:column;margin:12px;min-height:0';
       var stats = div('inc-stats');
+      var OPEN_ST = { NEW: 1, TRIAGING: 1 };
+      var openN = D.INCIDENTS.filter(function (i) { return OPEN_ST[i.status]; }).length;
+      var unN = D.INCIDENTS.filter(function (i) { return !i.analyst || i.analyst === '—' || i.analyst === '-'; }).length;
+      var an = function (a) { return (a && a !== '—' && a !== '-') ? a : 'unassigned'; };
+      var leads = D.INCIDENTS.filter(function (i) { return i.lead > 0; }).map(function (i) { return i.lead; });
+      var meanLead = leads.length ? leads.reduce(function (a, b) { return a + b; }, 0) / leads.length : 0;
       [
-        { k: 'Open', v: '2', s: 'requiring action', cls: 'red' },
-        { k: 'Unassigned', v: '0', s: 'no analyst', cls: 'green' },
-        { k: 'Median Contain', v: '8m 0s', s: 'this shift' },
-        { k: 'Mean Lead Time', v: '9.2s', s: 'ahead of milestone', cls: 'green' }
+        { k: 'Open', v: String(openN), s: 'requiring action', cls: openN ? 'red' : 'green' },
+        { k: 'Unassigned', v: String(unN), s: 'no analyst', cls: unN ? 'amber' : 'green' },
+        { k: 'Total', v: String(D.INCIDENTS.length), s: 'in queue' },
+        { k: 'Mean Lead Time', v: leads.length ? meanLead.toFixed(1) + 's' : '—', s: leads.length ? 'ahead of milestone' : 'no lead-time data', cls: leads.length ? 'green' : '' }
       ].forEach(function (c) {
-        stats.innerHTML += '<div class="cell"><div class="k">' + c.k + '</div><div class="v serif ' + (c.cls || '') + '">' + c.v + '</div><div class="s">' + c.s + '</div></div>';
+        stats.innerHTML += '<div class="cell"><div class="k">' + c.k + '</div><div class="v serif ' + (c.cls || '') + '">' + esc(c.v) + '</div><div class="s">' + c.s + '</div></div>';
       });
       panelWrap.appendChild(stats);
 
       var layout = div('inc-layout');
       /* left list */
       var list = div('inc-list');
+      var byStatus = {};
+      D.INCIDENTS.forEach(function (i) { byStatus[i.status] = (byStatus[i.status] || 0) + 1; });
       var qhead = div('panel-hd');
-      qhead.innerHTML = '<div class="t">Queue <b>2 open · 4 total</b></div>';
+      qhead.innerHTML = '<div class="t">Queue <b>' + openN + ' open · ' + D.INCIDENTS.length + ' total</b></div>';
       list.appendChild(qhead);
       var qtabs = div('tabs');
-      [['ALL', 4], ['NEW', 0], ['TRIAGING', 1], ['CONTAINED', 1], ['CLOSED', 2]].forEach(function (q) {
+      [['ALL', D.INCIDENTS.length], ['NEW', byStatus.NEW || 0], ['TRIAGING', byStatus.TRIAGING || 0], ['CONTAINED', byStatus.CONTAINED || 0], ['CLOSED', byStatus.CLOSED || 0]].forEach(function (q) {
         qtabs.innerHTML += '<div class="tab' + (q[0] === 'ALL' ? ' active' : '') + '">' + q[0] + ' ' + q[1] + '</div>';
       });
       list.appendChild(qtabs);
@@ -1673,7 +1682,7 @@
           '<div class="l1"><span class="id">' + inc.id + '</span>' + tag(inc.status, stCls) + tag('SEV ' + inc.sev, sevCls) +
           '<span class="right"><span class="pk">' + inc.peak.toFixed(3) + '</span></span></div>' +
           '<div class="tech">' + inc.tid + ' ' + esc(inc.tech) + '</div>' +
-          '<div class="meta">' + esc(inc.target) + ' · ' + esc(inc.ip) + ' · ' + inc.dur + ' · ' + esc(inc.analyst) + ' · lead ' + inc.lead.toFixed(1) + 's</div>';
+          '<div class="meta">' + esc(inc.target) + ' · ' + esc(inc.ip) + ' · ' + esc(inc.dur) + ' · ' + esc(an(inc.analyst)) + (inc.lead > 0 ? ' · lead ' + inc.lead.toFixed(1) + 's' : '') + '</div>';
         it.onclick = function () { S.incident = inc.id; renderScreen(); };
         list.appendChild(it);
       });
@@ -1681,22 +1690,25 @@
 
       /* right detail */
       var inc = D.INCIDENTS.find(function (i) { return i.id === S.incident; }) || D.INCIDENTS[0];
+      var relEvents = (D.EVENTS || []).filter(function (e2) {
+        return e2.host === inc.ip || (e2.msg || '').indexOf(inc.tech) !== -1 || (e2.msg || '').indexOf(inc.target) !== -1;
+      });
       var detail = div('inc-detail');
       var hd = div('inc-detail-hd');
       var stCls2 = inc.status === 'TRIAGING' ? 'red' : inc.status === 'CONTAINED' ? 'green' : 'dim';
       hd.innerHTML =
         '<div><div class="ttl">' + inc.id + ' ' + tag(inc.status, stCls2) + tag(inc.sev === 'HIGH' ? 'ELEVATED' : 'WARNING', inc.sev === 'HIGH' ? 'red' : 'amber') + '</div>' +
         '<div class="inc-line"><b style="font-family:var(--serif);font-size:14px">' + inc.tid + ' ' + esc(inc.tech) + '</b></div>' +
-        '<div class="inc-line">Command and Control · dmz-web 10.0.3.10 · opened ' + inc.opened + ' · ' + inc.dur + ' · ' + inc.alerts + ' alerts · ' + esc(inc.analyst) + ' · <span class="lead">lead ' + inc.lead.toFixed(1) + 's</span></div></div>' +
+        '<div class="inc-line">' + esc(inc.tech) + ' · ' + esc(inc.target) + ' ' + esc(inc.ip) + ' · opened ' + esc(inc.opened) + ' · ' + esc(inc.dur) + ' · ' + inc.alerts + ' alerts · ' + esc(an(inc.analyst)) + (inc.lead > 0 ? ' · <span class="lead">lead ' + inc.lead.toFixed(1) + 's</span>' : '') + '</div></div>' +
         '<div class="peak">peak <b>' + inc.peak.toFixed(3) + '</b></div>';
       detail.appendChild(hd);
 
       /* actions */
       var acts = div('inc-acts');
       var a1 = document.createElement('button'); a1.className = 'btn red'; a1.textContent = 'ISOLATE TARGET HOST';
-      a1.onclick = function () { toast('ISOLATE TARGET HOST', 'dmz-web 10.0.3.10 — simulation only, no production change', 'amber'); };
+      a1.onclick = function () { toast('ISOLATE TARGET HOST', inc.target + ' — simulation only, no production change', 'amber'); };
       var a2 = document.createElement('button'); a2.className = 'btn amber'; a2.textContent = 'BLOCK SOURCE';
-      a2.onclick = function () { toast('BLOCK SOURCE', '192.168.100.7 — simulation only, no production change', 'amber'); };
+      a2.onclick = function () { toast('BLOCK SOURCE', inc.ip + ' — simulation only, no production change', 'amber'); };
       var a3 = document.createElement('button'); a3.className = 'btn green'; a3.textContent = '✓ EXPORT REPORT';
       a3.onclick = function () { toast('REPORT EXPORTED', inc.id + '-report.md · ' + inc.evidence + ' evidence flows'); };
       var a4 = document.createElement('button'); a4.className = 'btn'; a4.textContent = 'ACKNOWLEDGE';
@@ -1712,7 +1724,7 @@
 
       /* tabs */
       var tabs = div('tabs');
-      [['blast', 'BLAST RADIUS'], ['trail', 'LEAD-TIME TRAIL · ' + Math.round(inc.lead)], ['activity', 'ACTIVITY · 3']].forEach(function (tp) {
+      [['blast', 'BLAST RADIUS'], ['trail', 'LEAD-TIME TRAIL' + (inc.lead > 0 ? ' · ' + Math.round(inc.lead) : '')], ['activity', 'ACTIVITY · ' + relEvents.length]].forEach(function (tp) {
         var t = div('tab' + (S.incidentTab === tp[0] ? ' active' : ''), tp[1]);
         t.onclick = function () { S.incidentTab = tp[0]; renderScreen(); };
         tabs.appendChild(t);
@@ -1738,8 +1750,8 @@
           d.innerHTML = '<div class="k ' + (kcls || '') + '">' + esc(k) + '</div><div class="nm">' + esc(nm) + '</div><div class="ip">' + esc(ip) + '</div><div class="s">' + esc(s) + '</div>';
           blast.appendChild(d);
         }
-        bnode(120, 135, 'hot', 'ATTACKER', 'external', '192.168.100.7', '1 flows · 1.3 KB', 'red');
-        bnode(255, 140, 'tgt', 'TARGET', inc.target, inc.ip, 'risk ' + inc.peak.toFixed(3), 'red');
+        bnode(120, 135, 'hot', 'ATTACKER', 'observed source', inc.ip, inc.alerts + ' alert events', 'red');
+        bnode(255, 140, 'tgt', 'TARGET', inc.tech, inc.target, 'risk ' + inc.peak.toFixed(3), 'red');
         bnode(560, 28, 'hot', 'REACHED', 'srv-app', '10.0.2.40', 'T1021 observed · 12 hits', 'red');
         bnode(560, 200, 'warm', 'AT RISK', 'srv-db', '10.0.2.50', '58% · +8s · T1021', 'amber');
         bnode(560, 262, 'warm', 'AT RISK', 'srv-id', '10.0.2.20', '34% · +12s · T1078', 'amber');
@@ -1747,6 +1759,10 @@
       } else if (S.incidentTab === 'trail') {
         var tp = panel('Lead-Time Trail', 'detection ahead of milestone', (function () {
           var b = div('panel-bd');
+          if (!(inc.lead > 0)) {
+            b.innerHTML = '<div class="hint">No lead-time trail for this incident — model risk crossed threshold within the same window as the first flow-evidence milestone (lead ' + inc.lead.toFixed(1) + 's).</div>';
+            return b;
+          }
           var obs = D.windows.slice(20, 60).map(function (w) { return w.risk; });
           var chart = FS.seriesChart({
             w: 1000, h: 220, obs: obs, threshold: 0.65,
@@ -1760,12 +1776,14 @@
         })(), null, { pad: false });
         detail.appendChild(tp);
       } else {
-        var act = panel('Activity', null, (function () {
+        var act = panel('Activity', 'detector events linked to this incident', (function () {
           var f = div();
-          [['19:49:22', 'Report exported — ' + inc.id + '-report.md (' + inc.evidence + ' evidence flows).'],
-           ['19:14:25', 'Source isolated. Monitoring for recurrence.'],
-           ['19:09:25', 'Port sweep against the database segment.']].forEach(function (e2) {
-            f.innerHTML += '<div class="feed-row"><span class="ts">' + e2[0] + '</span><span>' + esc(e2[1]) + '</span></div>';
+          if (!relEvents.length) {
+            f.innerHTML = '<div class="hint">No detector events linked to this incident yet.</div>';
+            return f;
+          }
+          relEvents.slice(0, 8).forEach(function (e2) {
+            f.innerHTML += '<div class="feed-row"><span class="ts">' + esc((e2.ts || '').replace('T', ' ').slice(11, 19)) + '</span><span>' + esc(e2.msg) + '</span></div>';
           });
           return f;
         })(), null, { pad: false });
@@ -1943,13 +1961,13 @@
           row.setAttribute('tabindex', '0');
           row.innerHTML = '<span class="ix">' + pad2(ix + 1) + '</span>' +
             '<span class="nm">' + esc(m2.nm) + '</span>' +
-            '<span class="bar"><i style="width:' + ((m2.f1 - 95) / 5 * 100).toFixed(1) + '%"></i></span>' +
+            '<span class="bar"><i style="width:' + Math.max(0, Math.min(100, (m2.f1 - 80) / 20 * 100)).toFixed(1) + '%"></i></span>' +
             '<span class="f1">' + m2.f1.toFixed(2) + '%</span>' +
             '<span class="why">' + esc(m2.why) + '</span>';
           row.title = m2.nm + ' — F1 ' + m2.f1.toFixed(2) + '% · ' + m2.why;
           box.appendChild(row);
         });
-        box.appendChild(div('mc-note', 'Same 66-feature space, capture-disjoint protocol and threshold 0.50 for every model. ExtraTrees selected for unseen-family stability (Track B recall 97.40%).'));
+        box.appendChild(div('mc-note', 'Same ' + (M.features || 66) + '-feature space, capture-disjoint protocol and threshold ' + (typeof M.threshold === 'number' ? M.threshold.toFixed(2) : '0.50') + ' for every model. ExtraTrees selected for unseen-family stability (Track B recall ' + (typeof M.trackB === 'number' ? M.trackB.toFixed(2) : '97.40') + '%).'));
         return box;
       })(), [pill('EVIDENCE', 'lite')], { pad: false });
       wrap.appendChild(mcp);
@@ -1977,7 +1995,10 @@
         lab.innerHTML = '<span>flow start</span><span>+1s</span><span>+3s</span><span>+5s</span>';
         tlw.appendChild(lab);
         var note = div('hint');
-        note.innerHTML = 'At +1s only 68% of the first window is observed — recall 68.16%. By +3s the behavioral signature is complete enough for 99.79%.';
+        var e0 = (M.early || [])[0], eN = (M.early || [])[(M.early || []).length - 1];
+        note.innerHTML = (e0 && eN)
+          ? 'At +' + esc(e0.t) + ' the first window is only partially observed — recall ' + e0.recall.toFixed(2) + '%. By +' + esc(eN.t) + ' the behavioral signature is complete: ' + eN.recall.toFixed(2) + '%.'
+          : 'Partial-evidence recall unavailable in this document.';
         tlw.appendChild(note);
         b.appendChild(tlw);
         return b;
@@ -1995,10 +2016,12 @@
         var cmWrap = div('mt12');
         cmWrap.innerHTML = '<div class="smallcaps" style="margin-bottom:6px">CONFUSION · THRESHOLD 0.50</div>';
         var cm = div('conf-matrix');
+        var cn = (M.confusion && typeof M.confusion.tn === 'number') ? M.confusion : { tn: 5554, fp: 1, fn: 952, tp: 441569 };
+        var fN = function (n) { return typeof n === 'number' ? n.toLocaleString('en-US') : '—'; };
         cm.innerHTML =
           '<span></span><span class="cm-hdr">PRED BENIGN</span><span class="cm-hdr">PRED ATTACK</span>' +
-          '<span class="cm-hdr" style="text-align:right;padding-right:8px">TRUE BENIGN</span><span class="cm-cell cm-ben">283,743</span><span class="cm-cell">1</span>' +
-          '<span class="cm-hdr" style="text-align:right;padding-right:8px">TRUE ATTACK</span><span class="cm-cell">3</span><span class="cm-cell cm-atk">13,842</span>';
+          '<span class="cm-hdr" style="text-align:right;padding-right:8px">TRUE BENIGN</span><span class="cm-cell cm-ben">' + fN(cn.tn) + '</span><span class="cm-cell">' + fN(cn.fp) + '</span>' +
+          '<span class="cm-hdr" style="text-align:right;padding-right:8px">TRUE ATTACK</span><span class="cm-cell">' + fN(cn.fn) + '</span><span class="cm-cell cm-atk">' + fN(cn.tp) + '</span>';
         cmWrap.appendChild(cm);
         b.appendChild(cmWrap);
         var note = div('hint');
@@ -2009,18 +2032,23 @@
       grid.appendChild(fp2);
       wrap.appendChild(grid);
 
-      /* inference log */
-      var il = panel('Inference Log', 'telemetry + inference', (function () {
+      /* inference log — real AlertEvent stream, newest first */
+      var AL = D.ALERTS || [];
+      var il = panel('Inference Log', AL.length ? 'alert stream · newest first · ' + AL.length + ' events' : 'no alerts in document', (function () {
         var f = div();
-        [['19:44:52', 'window #90 · 66 features · risk 0.739 · MALICIOUS · 11.2ms'],
-         ['19:44:50', 'window #89 · 66 features · risk 0.641 · BENIGN · 10.8ms'],
-         ['19:44:48', 'window #88 · 66 features · risk 0.618 · BENIGN · 11.9ms'],
-         ['19:44:46', 'window #87 · 66 features · risk 0.577 · BENIGN · 12.4ms'],
-         ['19:44:44', 'calibration: sigmoid(k=1.02, b=−0.13) applied']].forEach(function (e) {
-          f.innerHTML += '<div class="feed-row"><span class="ts">' + e[0] + '</span><span>' + esc(e[1]) + '</span></div>';
+        if (!AL.length) {
+          f.innerHTML = '<div class="hint">No AlertEvents in this document — benign replay traffic produces no inference rows.</div>';
+          return f;
+        }
+        AL.slice(0, 6).forEach(function (a) {
+          var ts = (a.timestamp || '—').replace('T', ' ').slice(11, 23);
+          f.innerHTML += '<div class="feed-row"><span class="ts">' + esc(ts) + '</span><span>' +
+            esc(a.model && a.model.name ? a.model.name : '—') + ' · ' + esc(a.threat_class) + '/' + esc(a.subtype) +
+            ' · risk ' + (typeof a.risk === 'number' ? a.risk.toFixed(3) : '—') +
+            ' · ' + esc(a.src) + ' → ' + esc(a.dst || '—') + '</span></div>';
         });
         return f;
-      })(), null, { pad: false });
+      })(), [pill(String(AL.length), 'lite')], { pad: false });
       wrap.appendChild(il);
       root.appendChild(wrap);
     }
@@ -2153,7 +2181,7 @@
       ['attack', 'ATT&CK', '\u276F'], ['replay', 'Replay', '\u276F'],
       ['incidents', 'Incidents', '\u276F'], ['events', 'Events', '\u276F'],
       ['model', 'Model', '\u276F'], ['controls', 'Controls', '\u276F'],
-      ['alerts', 'Alerts', '\\u276F'], ['detectors', 'Detectors', '\\u276F'],
+      ['alerts', 'Alerts', '\u276F'], ['detectors', 'Detectors', '\u276F'],
       /* section headers rendered between items (index -> label) */
       ['__sec__', 'OPS', null, 1], ['__sec__', 'EXPLORE', null, 4], ['__sec__', 'WORKSPACE', null, 8], ['__sec__', 'SYSTEM', null, 11], ['__sec__', 'DETECTION', null, 12]
     ];

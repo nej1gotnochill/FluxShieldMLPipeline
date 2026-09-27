@@ -376,7 +376,7 @@ body { font-feature-settings:'tnum' 1; }
 .ml-strip .cell { padding:10px 12px; border-right:1px solid var(--line); min-width:0; }
 .ml-strip .cell:last-child { border-right:none; }
 .ml-strip .k { font-size:var(--fs-xs); letter-spacing:1.4px; color:var(--text3); text-transform:uppercase; white-space:nowrap; }
-.ml-strip .v { font-family:var(--serif); font-size:20px; margin-top:3px; white-space:nowrap; }
+.ml-strip .v { font-family:var(--serif); font-size:20px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ml-strip .s { font-size:var(--fs-xs); color:var(--text3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .early-row { display:grid; grid-template-columns:56px 1fr 130px 60px; gap:10px; align-items:center; padding:6px 12px; border-bottom:1px solid #0A0C0A; font-size:var(--fs-sm); }
 .early-row .t { color:var(--text2); white-space:nowrap; }

@@ -65,11 +65,13 @@ class DashboardBridge:
         inc = self.incidents.get(key)
         if inc is None:
             inc = {"id": f"INC-{len(self.incidents)+1:04d}", "first": a.timestamp,
+                   "first_ts_epoch": self._ts_epoch(a.timestamp), "last_ts": 0.0,
                    "peak": 0.0, "alerts": 0, "klass": a.threat_class,
                    "subtype": a.subtype, "src": a.source_ip, "dst": a.destination_ip}
             self.incidents[key] = inc
         inc["peak"] = max(inc["peak"], a.risk)
         inc["alerts"] += 1
+        inc["last_ts"] = max(inc["last_ts"], self._ts_epoch(a.timestamp))
         while len(self.incidents) > self.max_incidents:
             self.incidents.popitem(last=False)
         while len(self.risk_by_bucket) > self.max_windows:
@@ -86,11 +88,12 @@ class DashboardBridge:
                      "source": f"{source}-{mode.lower()}",
                      "mode": mode},
             "ml": {
-                "model": "; ".join(r["name"] for r in registry_rows) or "none",
-                "calibration": "; ".join(r["calibration"] for r in registry_rows[:3]) or "-",
+                "model": registry_rows[0]["name"] if registry_rows else "none",
+                "modelCount": len(registry_rows),
+                "calibration": registry_rows[0].get("calibration", "-") if registry_rows else "-",
                 "threshold": threshold,
                 "features": int(registry_rows[0]["features"]) if registry_rows else 0,
-                "evalProtocol": "; ".join(r["evaluation"] for r in registry_rows),
+                "evalProtocol": registry_rows[0].get("evaluation", "-") if registry_rows else "-",
                 "registry": registry_rows,
             },
             "windows": self._windows_rows(threshold),
@@ -110,6 +113,12 @@ class DashboardBridge:
         }
         if fixture_eval:
             doc["ml"]["fixtureEval"] = fixture_eval
+        # measured ML data from the repo's own reports (final test, causal
+        # early-detection windows, 4-model comparison, Track B) — the Model
+        # screen renders these instead of built-in fixtures when present
+        from ml_data import build as build_ml_data
+        for k, v in build_ml_data().items():
+            doc["ml"][k] = v
         if metrics_snapshot:
             doc["overview"]["streamingMetrics"] = metrics_snapshot
         _atomic_write_json(doc, self.path)
@@ -157,11 +166,14 @@ class DashboardBridge:
 
     # ------------------------------------------------------------------ #
     def _bucket_of(self, a: AlertEvent) -> float:
+        return float(int(self._ts_epoch(a.timestamp) // 10) * 10)
+
+    @staticmethod
+    def _ts_epoch(ts: str) -> float:
         try:
-            t = datetime.fromisoformat(a.timestamp.replace("Z", "+00:00")).timestamp()
+            return datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
         except ValueError:
-            t = datetime.now(timezone.utc).timestamp()
-        return float(int(t // 10) * 10)     # 10 s display buckets
+            return datetime.now(timezone.utc).timestamp()     # 10 s display buckets
 
     def _windows_rows(self, threshold: float) -> list[dict]:
         rows = []
@@ -192,6 +204,9 @@ class DashboardBridge:
         rows = []
         for inc in self.incidents.values():
             risk = inc["peak"]
+            span = inc.get("last_ts", 0.0) - inc.get("first_ts_epoch", 0.0)
+            dur = (f"{span:.0f}s" if span >= 1 else "<1s") if span > 0 else "-"
+            opened = inc["first"].split("T")[-1][:8] if "T" in inc["first"] else inc["first"]
             rows.append({
                 "id": inc["id"],
                 "sev": "CRIT" if risk >= 0.8 else "HIGH" if risk >= 0.6 else "MED",
@@ -201,11 +216,11 @@ class DashboardBridge:
                 "target": inc["dst"] or inc["src"],
                 "ip": inc["src"],
                 "peak": round(risk, 4),
-                "lead": 0.0,
-                "dur": "-",
-                "analyst": "-",
+                "lead": 0.0,                # no forecast layer yet: 0 = unknown, UI hides it
+                "dur": dur,
+                "analyst": "",              # unassigned (no analyst workflow yet)
                 "alerts": inc["alerts"],
-                "opened": inc["first"],
+                "opened": opened,
                 "evidence": inc["alerts"],
             })
         return rows
