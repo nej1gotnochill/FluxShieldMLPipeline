@@ -1,13 +1,22 @@
-# Netra — Passive One-Way Network Threat-Detection ML Pipeline
+# Netra — Passive One-Way Multi-Threat Detection Platform
 
-Leakage-aware near-real-time DDoS flow detection on the
-[DDoS-AT-2022](https://link.springer.com/article/10.1007/s43538-023-00159-9)
-dataset: 45 raw PCAPs (≈ 37.84 GB, 98,658,747 packets, 11 attack families +
-benign) stream-processed into 1,236,285 bidirectional flows with 66 float32
-features, evaluated under strict capture-disjoint protocol with a permanently
-untouched final test — final Precision **0.999998**, Recall **0.997849**, FPR
+Netra is a passive, one-way network threat-detection platform: a validated,
+leakage-aware DDoS detector (the offline system of record) plus a streaming
+multi-threat service that turns read-only packet captures into standardized,
+evidence-backed alerts and a live SOC dashboard.
+
+**Offline system of record** — [DDoS-AT-2022](https://link.springer.com/article/10.1007/s43538-023-00159-9):
+45 raw PCAPs (≈ 37.84 GB, 98,658,747 packets, 11 attack families + benign)
+stream-processed into 1,236,285 bidirectional flows with 66 float32 features,
+evaluated under strict capture-disjoint protocol with a permanently untouched
+final test — final Precision **0.999998**, Recall **0.997849**, FPR
 **0.00018** on 448,076 unseen flows, with causal 1 s/3 s/5 s early-detection
 evaluation.
+
+**Streaming platform** — the same flow math under causal windows, six threat
+detectors (DDoS, C2 beaconing, DGA/DNS tunneling, encrypted-session metadata,
+recon/port-scan, exfiltration), transparent risk fusion, a standardized
+AlertEvent schema, and a dashboard fed exclusively by real detections.
 
 > The raw DDoS-AT-2022 PCAPs are **intentionally NOT stored in this
 > repository** because of their size (≈ 37.84 GB). The pipeline discovers
@@ -267,16 +276,58 @@ python -m src.streaming.replay --pcap <capture.pcap> --out data.json --alerts al
 python dashboard/server.py   # then open the dashboard (badge shows REPLAY DATA)
 ```
 
-Known limitation: the streaming layer's per-bucket flow eviction (memory
-guard at 300k tracked flows) can close accumulators slightly earlier than
-the offline extractor's sweep, so benign-capture flag rates differ in the
-third decimal from the offline causal evaluation. This is stated, not hidden.
+Run the fixture evaluation (all six classes + real benign FPR side):
+
+```bash
+python -m src.streaming.evaluate --benign <real-benign-capture.pcap>
+# -> reports/streaming_fixture_evaluation.md (+ .json, shown on the Detectors screen)
+```
+
+**Measured on this machine** (single core, Python; captures are real
+DDoS-AT-2022 PCAPs):
+
+| Metric | Value |
+|---|---:|
+| Sustained replay throughput | ~4,500–5,200 pkt/s (~3,000–4,100 flows/s) |
+| End-to-end packet → alert latency (benign capture) | p50 12 ms · p95 26 ms · p99 43 ms |
+| End-to-end packet → alert latency (SYN-flood capture) | p50 13 ms · p95 36 ms · p99 ~200 ms |
+| Benign-capture flag rate (streaming path) | 0.19% (24 / 12,460 window rows) |
+| Validated extractor on the same capture | 0.09% |
+| Fixture scenarios detected (all six classes) | 6/6, zero cross-class alerts |
+| Alerts on the real benign capture | **0** |
+
+The streaming-vs-offline flag-rate gap (0.19% vs 0.09%) comes from the
+streaming layer's per-bucket flow eviction (memory guard at 300k tracked
+flows closing accumulators slightly earlier than the offline extractor's
+sweep). It is stated, not hidden; the offline pipeline remains the
+evaluation system of record.
+
+### Dashboard
+
+The UI renders only what the backend computes — no synthetic live values
+(test-enforced). Screens of note:
+
+- **Alerts** — full AlertEvent stream (risk, confidence, model name/version
+  per row), per-class filters, and an evidence explorer rendering complete
+  evidence dicts (rates, flag counts, source-IP entropy, beacon intervals,
+  fan-out, fingerprints).
+- **Detectors** — live health strip (packets, flows, alerts, drops, p50/p95/p99
+  end-to-end latency, throughput), the detector registry with real
+  status/last_error, and the fixture-evaluation table.
+- **Provenance** — the badge distinguishes LIVE DATA / REPLAY DATA /
+  SIMULATED DATA; replay is never labeled live.
+
+`dashboard/server.py` is hardened: opt-in bearer auth (`NETRA_DASH_TOKEN`),
+CORS allowlist (`NETRA_DASH_CORS`, never wildcard), path validation, strict
+JSON errors, a read-only method gate (writes → 405), and an audit log
+(`dashboard/audit.log`). The dashboard is read-only telemetry by design;
+mitigation actions are out of scope for a one-way enclave.
 
 ## Installation
 
 ```bash
-git clone https://github.com/nej1gotnochill/NetraMLPipeline.git
-cd NetraMLPipeline
+git clone https://github.com/nej1gotnochill/FluxShieldMLPipeline.git
+cd FluxShieldMLPipeline
 python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
