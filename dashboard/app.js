@@ -1972,6 +1972,32 @@
       })(), [pill('EVIDENCE', 'lite')], { pad: false });
       wrap.appendChild(mcp);
 
+      /* detector registry — live service state from the streaming registry
+         (kind, operating point, ok/degraded status, last_error, evaluation) */
+      var REG = M.registry || [];
+      var rp = panel('Detector Registry', 'deployed models + rules · version, operating point, health', (function () {
+        var box = div('mc-rows six');
+        box.innerHTML = '<div class="mc-row hdr"><span>DETECTOR</span><span>VER</span><span>TYPE</span><span>THRESHOLD</span><span>STATUS</span><span class="why">EVALUATION</span></div>';
+        if (!REG.length) {
+          box.innerHTML += '<div class="mc-row"><span class="nm">—</span><span>—</span><span>—</span><span>—</span><span>—</span><span class="why">run a replay to populate the registry</span></div>';
+        }
+        REG.forEach(function (d) {
+          var bad = d.status === 'degraded';
+          var row = div('mc-row' + (bad ? ' sel' : ''));
+          row.innerHTML = '<span class="nm">' + esc(d.name) + '</span>' +
+            '<span>' + esc(String(d.version)) + '</span>' +
+            '<span>' + esc(String(d.kind).toUpperCase()) + '</span>' +
+            '<span>' + (isFinite(d.threshold) ? Number(d.threshold).toFixed(2) : '—') + '</span>' +
+            '<span>' + (bad ? '<span class="pill red">DEGRADED</span>' : '<span class="pill green">OK</span>') + '</span>' +
+            '<span class="why">' + esc(d.evaluation || '—') + '</span>';
+          if (d.last_error) row.title = 'last error: ' + d.last_error;
+          box.appendChild(row);
+        });
+        box.appendChild(div('mc-note', (M.modelCount || REG.length) + ' detectors registered · status and last_error are live service state · full health strip on the Detectors screen.'));
+        return box;
+      })(), [pill(String(REG.length || (M.modelCount || 0)), 'lite')], { pad: false });
+      wrap.appendChild(rp);
+
       var grid = div('grid2 mt12');
 
       /* early detection */
@@ -2536,7 +2562,7 @@
 
       /* detector registry table — status/last_error are real service state */
       var tbl = panel('Detector Registry', 'name · version · operating point · measured evaluation', (function () {
-        var box = div('mc-rows');
+        var box = div('mc-rows six');
         box.innerHTML = '<div class="mc-row hdr"><span>DETECTOR</span><span>VER</span><span>TYPE</span><span>THRESHOLD</span><span>STATUS</span><span class="why">EVALUATION</span></div>';
         if (!dets.length) {
           box.innerHTML += '<div class="mc-row"><span class="nm">—</span><span>—</span><span>—</span><span>—</span><span>—</span><span class="why">run a replay to populate the registry</span></div>';

@@ -75,6 +75,25 @@ window.FSLOAD = (function () {
     if (isObj(d.confusion) && isNum(d.confusion.tn) && isNum(d.confusion.fp) && isNum(d.confusion.fn) && isNum(d.confusion.tp)) {
       m.confusion = { tn: d.confusion.tn, fp: d.confusion.fp, fn: d.confusion.fn, tp: d.confusion.tp };
     }
+    if (isArr(d.registry)) {
+      var reg = [];
+      d.registry.forEach(function (e) {
+        if (isObj(e) && isStr(e.name)) {
+          reg.push({
+            name: e.name,
+            version: isStr(e.version) ? e.version : '—',
+            kind: isStr(e.kind) ? e.kind : 'rule',
+            features: isNum(e.features) && e.features >= 0 ? e.features : 0,
+            calibration: isStr(e.calibration) ? e.calibration : '—',
+            threshold: isNum(e.threshold) ? e.threshold : 0.5,
+            status: e.status === 'degraded' ? 'degraded' : 'ok',
+            last_error: isStr(e.last_error) ? e.last_error : '',
+            evaluation: isStr(e.evaluation) ? e.evaluation : ''
+          });
+        }
+      });
+      if (reg.length) m.registry = reg;
+    }
     if (isArr(d.comparison)) {
       var cmp = [];
       d.comparison.forEach(function (e) {
