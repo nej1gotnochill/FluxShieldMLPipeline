@@ -199,7 +199,7 @@ window.FSLOAD = (function () {
       out.push({
         id: n.id,
         sev: isStr(n.sev) ? n.sev : 'MED',
-        status: n.status === 'TRIAGING' || n.status === 'CONTAINED' || n.status === 'CLOSED' ? n.status : 'TRIAGING',
+        status: n.status === 'NEW' || n.status === 'TRIAGING' || n.status === 'ACKNOWLEDGED' || n.status === 'CONTAINED' || n.status === 'CLOSED' ? n.status : 'TRIAGING',
         tid: isStr(n.tid) ? n.tid : '—',
         tech: isStr(n.tech) ? n.tech : '—',
         target: isStr(n.target) ? n.target : '—',
@@ -210,7 +210,8 @@ window.FSLOAD = (function () {
         analyst: isStr(n.analyst) ? n.analyst : '—',
         alerts: isNum(n.alerts) ? n.alerts : 0,
         opened: isStr(n.opened) ? n.opened : '—',
-        evidence: isNum(n.evidence) ? n.evidence : 0
+        evidence: isNum(n.evidence) ? n.evidence : 0,
+        updated: isStr(n.updated) ? n.updated : ''
       });
     });
     return out.length ? out : null;

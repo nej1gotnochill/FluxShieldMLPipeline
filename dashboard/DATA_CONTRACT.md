@@ -24,6 +24,29 @@ No other backend changes are required on the UI side.
 - All UI numbers on these screens come from the streaming service; the UI
   never synthesizes risks, latency, or evaluation results.
 
+## Analyst incident workflow (the one sanctioned writer)
+
+Incident status is analyst DECISION data layered on the detector output —
+never a network command (the deployment stays passive/one-way):
+
+- Workflow: `NEW → TRIAGING → ACKNOWLEDGED → CONTAINED → CLOSED`, forward
+  only. Closed incidents are immutable.
+- The dashboard's ACKNOWLEDGE / MARK CONTAINED / CLOSE buttons POST
+  `{id, status[, analyst]}` to `/api/incident` (the dashboard server's only
+  non-GET route; bearer auth applies when `NETRA_DASH_TOKEN` is set).
+- The server validates the transition against the **current** `data.json`
+  row (ids are reassigned per replay run, so a stale client gets 404) and
+  writes both `data.json` (so every poll sees it) and
+  `dashboard/incident_status.json` (a gitignored sidecar).
+- `DashboardBridge` re-applies the sidecar on every write — analyst
+  decisions survive replay/emit cycles, when incident rows are regenerated
+  from the alert stream.
+- The shared transition table lives in `src/streaming/emit.py`
+  (`INCIDENT_STATUSES`, `INCIDENT_TRANSITIONS`); the server imports it so
+  both planes enforce identical rules.
+- On a static/read-only server the UI keeps the decision in memory for the
+  session and says so in a toast; reload resets it.
+
 ## Contract enforcement (tests)
 
 `tests/test_dashboard_contract.py` statically enforces this contract so

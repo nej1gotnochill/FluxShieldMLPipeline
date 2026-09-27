@@ -46,3 +46,6 @@ cache/
 # local dashboard dev server artifacts
 server.log
 .server.pid
+
+# analyst incident decisions (sidecar next to data.json, re-applied by emit)
+dashboard/incident_status.json

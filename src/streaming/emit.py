@@ -17,6 +17,90 @@ from typing import Any
 
 from schema import AlertEvent
 
+# --------------------------------------------------------------------------- #
+# Analyst workflow: incident status transitions.
+#
+# The dashboard's Containment buttons are ANALYST DECISIONS about an incident
+# (acknowledge / mark contained / close). They never touch the network — the
+# deployment stays passive/one-way — but the decision must survive emit cycles:
+# a replay regenerates the incident rows from the alert stream on every write,
+# so the status lives in a sidecar next to data.json (dashboard/incident_status
+# .json, gitignored) and is re-applied on every DashboardBridge.write(). The
+# same transition table is shared with the dashboard server, which validates
+# POSTs against the CURRENT data.json row (ids are reassigned per run, so a
+# stale client cannot flip an incident that no longer exists in that state).
+# --------------------------------------------------------------------------- #
+
+INCIDENT_STATUSES = ("NEW", "TRIAGING", "ACKNOWLEDGED", "CONTAINED", "CLOSED")
+
+#: allowed forward transitions (analyst workflow only moves forward)
+INCIDENT_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "NEW": ("TRIAGING",),
+    "TRIAGING": ("ACKNOWLEDGED", "CONTAINED", "CLOSED"),
+    "ACKNOWLEDGED": ("CONTAINED", "CLOSED"),
+    "CONTAINED": ("CLOSED",),
+    "CLOSED": (),
+}
+
+
+def sidecar_path(path: str) -> str:
+    """incident_status.json next to the emitted data.json at `path`."""
+    d = os.path.dirname(os.path.abspath(path)) or "."
+    return os.path.join(d, "incident_status.json")
+
+
+def _load_statuses(path: str) -> dict[str, str]:
+    try:
+        with open(sidecar_path(path), encoding="utf-8") as fh:
+            raw = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    return {str(k): str(v) for k, v in raw.items()
+            if str(v) in INCIDENT_STATUSES and str(k) != "analyst"}
+
+
+def _save_statuses(path: str, statuses: dict[str, str],
+                   analysts: dict[str, str] | None = None) -> None:
+    doc: dict[str, Any] = dict(statuses)
+    if analysts:
+        doc["analyst"] = analysts          # one reserved metadata key
+    _atomic_write_json(doc, sidecar_path(path))
+
+
+def load_incident_analysts(path: str) -> dict[str, str]:
+    raw = _load_statuses(path)               # validates statuses; drops analyst
+    try:
+        with open(sidecar_path(path), encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    an = doc.get("analyst") if isinstance(doc, dict) else None
+    if not isinstance(an, dict):
+        return {}
+    return {str(k): str(v)[:40] for k, v in an.items() if str(v).strip()}
+
+
+def save_incident_analysts(path: str, analysts: dict[str, str]) -> None:
+    statuses = _load_statuses(path)
+    _save_statuses(path, statuses, analysts)
+
+
+def apply_incident_status(statuses: dict[str, str], inc_id: str,
+                          current: str, target: str) -> tuple[bool, str]:
+    """Validate + record a transition for incident `inc_id`.
+    Returns (allowed, new_status). Closed incidents are immutable; unknown
+    ids may not be created; the workflow only moves forward."""
+    if current not in INCIDENT_STATUSES or target not in INCIDENT_STATUSES:
+        return False, current
+    if current == "CLOSED":
+        return False, current
+    if target not in INCIDENT_TRANSITIONS.get(current, ()):
+        return False, current
+    statuses[inc_id] = target
+    return True, target
+
 # Display-only mapping to MITRE technique ids for the UI. These labels do not
 # assert attribution beyond the detector class that fired.
 TECHNIQUE_ID = {
@@ -36,6 +120,10 @@ class DashboardBridge:
         self.incidents: OrderedDict[tuple, dict] = OrderedDict()
         self.max_windows = max_windows
         self.max_incidents = max_incidents
+        # analyst decisions (ACKNOWLEDGED/CONTAINED/CLOSED) persist across
+        # emit cycles via the sidecar; TRIAGING/NEW are the generated defaults
+        self.statuses: dict[str, str] = _load_statuses(path)
+        self.analysts: dict[str, str] = load_incident_analysts(path)
 
     # ------------------------------------------------------------------ #
     def ingest(self, a: AlertEvent) -> None:
@@ -69,6 +157,11 @@ class DashboardBridge:
                    "peak": 0.0, "alerts": 0, "klass": a.threat_class,
                    "subtype": a.subtype, "src": a.source_ip, "dst": a.destination_ip}
             self.incidents[key] = inc
+            sid = inc["id"]
+            if sid in self.statuses:
+                inc["status"] = self.statuses[sid]
+            if sid in self.analysts:
+                inc["analyst"] = self.analysts[sid]
         inc["peak"] = max(inc["peak"], a.risk)
         inc["alerts"] += 1
         inc["last_ts"] = max(inc["last_ts"], self._ts_epoch(a.timestamp))
@@ -121,6 +214,11 @@ class DashboardBridge:
             doc["ml"][k] = v
         if metrics_snapshot:
             doc["overview"]["streamingMetrics"] = metrics_snapshot
+        # persist analyst decisions so the next bridge (and the dashboard
+        # server's validation) sees the same state
+        _save_statuses(self.path, {k: v for k, v in self.statuses.items()
+                                   if k in {i["id"] for i in self.incidents.values()}},
+                       self.analysts)
         _atomic_write_json(doc, self.path)
         return self.path
 
@@ -210,7 +308,8 @@ class DashboardBridge:
             rows.append({
                 "id": inc["id"],
                 "sev": "CRIT" if risk >= 0.8 else "HIGH" if risk >= 0.6 else "MED",
-                "status": "TRIAGING",
+                "status": inc.get("status", "TRIAGING"),
+                "analyst": inc.get("analyst", ""),
                 "tid": TECHNIQUE_ID.get(inc["klass"], "T1498"),
                 "tech": inc["subtype"] or inc["klass"],
                 "target": inc["dst"] or inc["src"],
@@ -218,7 +317,6 @@ class DashboardBridge:
                 "peak": round(risk, 4),
                 "lead": 0.0,                # no forecast layer yet: 0 = unknown, UI hides it
                 "dur": dur,
-                "analyst": "",              # unassigned (no analyst workflow yet)
                 "alerts": inc["alerts"],
                 "opened": opened,
                 "evidence": inc["alerts"],

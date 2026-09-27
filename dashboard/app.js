@@ -1674,7 +1674,7 @@
       var panelWrap = div('panel');
       panelWrap.style.cssText = 'flex:1;display:flex;flex-direction:column;margin:12px;min-height:0';
       var stats = div('inc-stats');
-      var OPEN_ST = { NEW: 1, TRIAGING: 1 };
+      var OPEN_ST = { NEW: 1, TRIAGING: 1, ACKNOWLEDGED: 1 };
       var openN = D.INCIDENTS.filter(function (i) { return OPEN_ST[i.status]; }).length;
       var unN = D.INCIDENTS.filter(function (i) { return !i.analyst || i.analyst === '—' || i.analyst === '-'; }).length;
       var an = function (a) { return (a && a !== '—' && a !== '-') ? a : 'unassigned'; };
@@ -1705,7 +1705,7 @@
       list.appendChild(qtabs);
       D.INCIDENTS.forEach(function (inc) {
         var it = div('inc-item' + (S.incident === inc.id ? ' sel' : ''));
-        var stCls = inc.status === 'TRIAGING' ? 'red' : inc.status === 'CONTAINED' ? 'green' : 'dim';
+        var stCls = inc.status === 'TRIAGING' ? 'red' : inc.status === 'ACKNOWLEDGED' ? 'lite' : inc.status === 'CONTAINED' ? 'green' : 'dim';
         var sevCls = inc.sev === 'HIGH' ? 'red' : 'amber';
         it.innerHTML =
           '<div class="l1"><span class="id">' + inc.id + '</span>' + tag(inc.status, stCls) + tag('SEV ' + inc.sev, sevCls) +
@@ -1724,7 +1724,7 @@
       });
       var detail = div('inc-detail');
       var hd = div('inc-detail-hd');
-      var stCls2 = inc.status === 'TRIAGING' ? 'red' : inc.status === 'CONTAINED' ? 'green' : 'dim';
+      var stCls2 = inc.status === 'TRIAGING' ? 'red' : inc.status === 'ACKNOWLEDGED' ? 'lite' : inc.status === 'CONTAINED' ? 'green' : 'dim';
       hd.innerHTML =
         '<div><div class="ttl">' + inc.id + ' ' + tag(inc.status, stCls2) + tag(inc.sev === 'HIGH' ? 'ELEVATED' : 'WARNING', inc.sev === 'HIGH' ? 'red' : 'amber') + '</div>' +
         '<div class="inc-line"><b style="font-family:var(--serif);font-size:14px">' + inc.tid + ' ' + esc(inc.tech) + '</b></div>' +
@@ -1733,6 +1733,42 @@
       detail.appendChild(hd);
 
       /* actions */
+      if (!S.incAck) S.incAck = {};   /* analyst name per incident id (session) */
+      /* analyst decisions — POST /api/incident mutates the status in data.json
+         (every client sees it on the next poll) and in the sidecar (the next
+         emit re-applies it). A static/read-only server answers 405/501: the
+         decision then stays in-memory for the session and says so. */
+      function setStatus(inc, target, btn) {
+        var prev = btn.textContent;
+        btn.disabled = true; btn.textContent = '…';
+        var body = JSON.stringify({ id: inc.id, status: target,
+                                    analyst: S.incAck[inc.id] || undefined });
+        fetch('/api/incident', { method: 'POST',
+                                 headers: { 'Content-Type': 'application/json' },
+                                 body: body })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (res.ok) {
+              inc.status = res.j.status;
+              if (res.j.analyst) inc.analyst = res.j.analyst;
+              inc.updated = new Date().toISOString().replace('T', ' ').slice(11, 19);
+              toast('Incident updated', inc.id + ' status → ' + res.j.status);
+              /* re-sync from the server immediately: a poll fetch that was
+                 in flight before the POST could still land with the old
+                 status and would otherwise clobber the optimistic update */
+              if (window.FSLOAD && window.FSLOAD.refresh) window.FSLOAD.refresh();
+            } else {
+              toast('Update rejected', (res.j && res.j.error) || 'HTTP error', 'amber');
+              if (S.incAck[inc.id] && /unknown|stale/.test((res.j && res.j.error) || '')) delete S.incAck[inc.id];
+            }
+          })
+          .catch(function () {
+            inc.status = target;
+            inc.updated = new Date().toISOString().replace('T', ' ').slice(11, 19);
+            toast('Recorded (session only)', inc.id + ' → ' + target + ' — API unavailable; reload resets it', 'amber');
+          })
+          .finally(function () { btn.disabled = false; btn.textContent = prev; renderScreen(); });
+      }
       var acts = div('inc-acts');
       var a1 = document.createElement('button'); a1.className = 'btn red'; a1.textContent = 'ISOLATE TARGET HOST';
       a1.onclick = function () { toast('ISOLATE TARGET HOST', inc.target + ' — simulation only, no production change', 'amber'); };
@@ -1741,11 +1777,18 @@
       var a3 = document.createElement('button'); a3.className = 'btn green'; a3.textContent = '✓ EXPORT REPORT';
       a3.onclick = function () { toast('REPORT EXPORTED', inc.id + '-report.md · ' + inc.evidence + ' evidence flows'); };
       var a4 = document.createElement('button'); a4.className = 'btn'; a4.textContent = 'ACKNOWLEDGE';
-      a4.onclick = function () { toast('Acknowledged', inc.id + ' marked acknowledged by analyst'); };
+      a4.title = 'record that an analyst has seen this incident';
+      a4.disabled = inc.status !== 'TRIAGING';
+      a4.onclick = function () {
+        if (!S.incAck[inc.id]) S.incAck[inc.id] = 'analyst';
+        setStatus(inc, 'ACKNOWLEDGED', a4);
+      };
       var a5 = document.createElement('button'); a5.className = 'btn'; a5.textContent = 'MARK CONTAINED';
-      a5.onclick = function () { toast('Marked contained', inc.id + ' — status → CONTAINED'); };
+      a5.disabled = !(inc.status === 'TRIAGING' || inc.status === 'ACKNOWLEDGED');
+      a5.onclick = function () { setStatus(inc, 'CONTAINED', a5); };
       var a6 = document.createElement('button'); a6.className = 'btn'; a6.textContent = 'CLOSE';
-      a6.onclick = function () { toast('Closed', inc.id + ' — status → CLOSED'); };
+      a6.disabled = inc.status === 'CLOSED';
+      a6.onclick = function () { setStatus(inc, 'CLOSED', a6); };
       var a7 = document.createElement('button'); a7.className = 'btn'; a7.textContent = 'OPEN HOST →';
       a7.onclick = function () { S.host = inc.target; nav('network'); };
       [a1, a2, a3, a4, a5, a6, a7].forEach(function (b) { acts.appendChild(b); });
@@ -1820,7 +1863,7 @@
       }
 
       var wf = div('hint');
-      wf.innerHTML = 'WORKFLOW new → triaging → contained → closed · containment calls /api/mitigate (MDL) — blocked in NO-TOUCH mode';
+      wf.innerHTML = 'WORKFLOW new → triaging → acknowledged → contained → closed · ACKNOWLEDGE / MARK CONTAINED / CLOSE record an analyst decision (persisted via POST /api/incident; the next emit re-applies it) · containment calls /api/mitigate (MDL) — blocked in NO-TOUCH mode';
       detail.appendChild(wf);
       layout.appendChild(detail);
       panelWrap.appendChild(layout);
