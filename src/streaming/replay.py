@@ -67,29 +67,52 @@ def main() -> None:
     snap = svc.run_pcap(args.pcap)
     alerts = svc.drain_alerts()
 
+    # measured fixture evaluation (if present) -> displayed on the Model page
+    fixture_eval = None
+    fe_path = Path(__file__).resolve().parents[2] / "reports" / "streaming_fixture_evaluation.md"
+    json_path = fe_path.with_suffix(".json")
+    if json_path.exists():
+        try:
+            fixture_eval = json.loads(json_path.read_text(encoding="utf-8"))
+        except Exception:
+            fixture_eval = None
+
     bridge = DashboardBridge(path=args.out)
     for a in alerts:
         bridge.ingest(a)
 
     registry = []
     if ddos_model is not None:
+        d = svc.registry.get("ddos")
         registry.append({
-            "name": "ddos-frozen-et", "version": "1.0",
+            "name": "ddos-frozen-et", "version": "1.0", "kind": "ml",
             "features": len(ddos_features),
             "calibration": "sigmoid",
             "threshold": ddos_threshold,
+            "status": d.status if d else "ok",
+            "last_error": (d.last_error or "") if d else "",
             "evaluation": ("capture-disjoint A1/A2/B; untouched final test "
                            f"P=0.999998 R=0.997849 (trained {meta.get('trained_at', 'n/a')})"),
         })
-    registry.append({
-        "name": "rule-recon/c2/dns/tls/exfil", "version": "1.0",
-        "features": 0, "calibration": "rule", "threshold": 0.5,
-        "evaluation": "fixture-based unit tests (DATA-LIMITED classes)",
-    })
+    for rule_name, det in (("recon", svc.registry.get("recon")),
+                           ("c2", svc.registry.get("c2")),
+                           ("dns", svc.registry.get("dns")),
+                           ("tls", svc.registry.get("tls")),
+                           ("exfil", svc.registry.get("exfil"))):
+        if det is None:
+            continue
+        registry.append({
+            "name": f"rule-{rule_name}", "version": det.version, "kind": "rule",
+            "features": 0, "calibration": "rule", "threshold": det.suspicious_floor,
+            "status": det.status, "last_error": det.last_error or "",
+            "evaluation": "synthetic-fixture scenario + real benign FPR (see reports/)"
+            if rule_name != "tls" else
+            "cleartext-handshake only; fixture scenario (DATA-LIMITED)",
+        })
 
     path = bridge.write(mode="REPLAY", source="netra-streaming",
                         registry_rows=registry, metrics_snapshot=snap,
-                        threshold=ddos_threshold)
+                        threshold=ddos_threshold, fixture_eval=fixture_eval)
 
     if args.alerts:
         with open(args.alerts, "w", encoding="utf-8") as fh:

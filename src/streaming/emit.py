@@ -29,6 +29,7 @@ class DashboardBridge:
     def __init__(self, path: str = "data.json", *, max_alerts: int = 200,
                  max_windows: int = 180, max_incidents: int = 20) -> None:
         self.path = path
+        self.metrics_snapshot: dict = {}
         self.alerts: deque[AlertEvent] = deque(maxlen=max_alerts)
         self.risk_by_bucket: OrderedDict[float, dict] = OrderedDict()
         self.hosts: dict[str, dict] = {}
@@ -76,8 +77,10 @@ class DashboardBridge:
 
     # ------------------------------------------------------------------ #
     def write(self, *, mode: str, source: str, registry_rows: list[dict],
-              metrics_snapshot: dict | None = None, threshold: float = 0.5) -> str:
+              metrics_snapshot: dict | None = None, threshold: float = 0.5,
+              fixture_eval: dict | None = None) -> str:
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        self.metrics_snapshot = metrics_snapshot or {}
         doc: dict[str, Any] = {
             "meta": {"schema_version": 1, "generated_at": now,
                      "source": f"{source}-{mode.lower()}",
@@ -94,6 +97,8 @@ class DashboardBridge:
             "hosts": self._hosts_rows(),
             "incidents": self._incident_rows(),
             "events": self._event_rows(),
+            "alerts": self._alert_rows(),
+            "streaming": self._streaming_rows(registry_rows),
             "overview": {
                 "observedRisk": max((a.risk for a in self.alerts), default=0.0),
                 "throughput": (metrics_snapshot or {}).get("packets_per_sec", 0),
@@ -103,10 +108,52 @@ class DashboardBridge:
                 "activeThreatClasses": sorted({a.threat_class for a in self.alerts}),
             },
         }
+        if fixture_eval:
+            doc["ml"]["fixtureEval"] = fixture_eval
         if metrics_snapshot:
             doc["overview"]["streamingMetrics"] = metrics_snapshot
         _atomic_write_json(doc, self.path)
         return self.path
+
+    def _streaming_rows(self, registry_rows: list[dict]) -> dict:
+        """Detector health + latency metrics for the streaming strip.
+        kind is derived honestly: a sigmoid-calibrated detector is ML, a
+        rule threshold is a rule."""
+        return {
+            "detectors": [
+                {"name": r.get("name", "?"), "version": r.get("version", "—"),
+                 "kind": "ml" if r.get("calibration") == "sigmoid" else "rule",
+                 "threshold": r.get("threshold", 0),
+                 "calibration": r.get("calibration", "—"),
+                 "status": r.get("status", "ok"),
+                 "last_error": r.get("last_error", ""),
+                 "evaluation": r.get("evaluation", "—")}
+                for r in registry_rows
+            ],
+            "metrics": self.metrics_snapshot,
+        }
+
+    def _alert_rows(self) -> list[dict]:
+        """Full AlertEvent records (latest last) — the UI's evidence viewer
+        consumes exactly these; nothing is summarized away."""
+        rows = []
+        for a in self.alerts:
+            rows.append({
+                "event_id": a.event_id,
+                "timestamp": a.timestamp,
+                "flow_id": a.flow_id,
+                "src": a.source_ip, "dst": a.destination_ip,
+                "sport": a.source_port, "dport": a.destination_port,
+                "proto": a.protocol,
+                "threat_class": a.threat_class, "subtype": a.subtype,
+                "prediction": a.prediction,
+                "confidence": a.confidence, "risk": a.risk,
+                "window_sec": a.observation_window_sec,
+                "model": a.model.to_dict(),
+                "evidence": a.evidence,
+                "state": a.state,
+            })
+        return rows
 
     # ------------------------------------------------------------------ #
     def _bucket_of(self, a: AlertEvent) -> float:

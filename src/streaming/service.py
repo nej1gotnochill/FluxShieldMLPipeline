@@ -172,6 +172,7 @@ class StreamingService:
                               for f, _ in pairs)
                 dur = max((f.end_ts - f.start_ts for f, _ in pairs), default=0.0)
                 evidence = dict(res0.evidence)
+                mix_stats = self.agg.source_mix_stats(bucket)
                 evidence.update({
                     "aggregated_flows": len(pairs),
                     "max_attack_probability": round(max(probas), 4),
@@ -182,6 +183,8 @@ class StreamingService:
                     "window_end": max(f.end_ts for f, _ in pairs),
                     "window_span_sec": round(dur, 3),
                 })
+                if mix_stats:
+                    evidence["source_mix"] = mix_stats
                 evidence["attack_probability"] = evidence["max_attack_probability"]
                 a = self.fusion.to_alert(
                     {"threat_class": res0.threat_class, "subtype": subtype,
